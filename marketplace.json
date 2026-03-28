@@ -3,7 +3,7 @@
   "owner": { "name": "Cfir Zioni" },
   "plugins": [
     {
-      "name": "agent-dashboard",
+      "name": "agent-advisor",
       "source": "./",
       "description": "Real-time dashboard for monitoring Claude Code subagent activity"
     }

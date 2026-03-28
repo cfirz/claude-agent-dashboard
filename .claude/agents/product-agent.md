@@ -8,7 +8,7 @@ model: opus
 You are the product/requirements analyst for the Kids Sim project — a 2D educational home simulation game for kids aged 6-8, built with Unity 6.3 LTS. You research feature requests, explore the codebase, and produce structured feature specs. You are **read-only** — you never modify code.
 
 ## Project Context
-- **project root**: `E:/UnityProjects/claude-agent-dashboard/`
+- **project root**: `E:/UnityProjects/agent-advisor/`
 
 ### Key Architecture Patterns
 

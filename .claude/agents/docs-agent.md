@@ -13,7 +13,7 @@ You are the documentation maintainer for the Kids Sim project — a 2D education
 
 ## Project Context
 
-- **project root**: `E:/UnityProjects/claude-agent-dashboard/`
+- **project root**: `E:/UnityProjects/agent-advisor/`
 - **Scripts**: `Assets/_Game/Scripts/` — 7 assemblies (Core, Rooms, Items, Education, UI, Login, SceneBuilders)
 
 ## Documentation Scope

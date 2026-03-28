@@ -18,7 +18,7 @@ Fetch accumulated metrics from the dashboard server:
 curl -s http://localhost:8099/api/advisor/metrics
 ```
 
-If the server is not running, tell the user to start it first with `/agent-dashboard:dashboard`.
+If the server is not running, tell the user to start it first with `/agent-advisor:dashboard`.
 
 ### Step 2: Read Existing Agents
 

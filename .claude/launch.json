@@ -2,7 +2,7 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "agent-dashboard",
+      "name": "agent-advisor",
       "runtimeExecutable": "node",
       "runtimeArgs": ["server/server.mjs"],
       "port": 8099,

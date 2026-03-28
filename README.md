@@ -25,25 +25,25 @@ The main Claude Code agent appears as **Orchestrator** in the dashboard, so you 
 
 ```bash
 # Add the marketplace
-/plugin marketplace add cfirz/claude-agent-dashboard
+/plugin marketplace add cfirz/agent-advisor
 
 # Install the plugin (global — hooks activate for all projects)
-/plugin install agent-dashboard@cfir-claude-plugins
+/plugin install agent-advisor@cfir-claude-plugins
 ```
 
 ### Option B: Direct Install from GitHub
 
 ```bash
 # Clone and install locally
-git clone https://github.com/cfirz/claude-agent-dashboard.git
-claude plugin install --plugin-dir ./claude-agent-dashboard --scope user
+git clone https://github.com/cfirz/agent-advisor.git
+claude plugin install --plugin-dir ./agent-advisor --scope user
 ```
 
 ### Option C: Quick Install Script (Windows)
 
 ```bash
-git clone https://github.com/cfirz/claude-agent-dashboard.git
-cd claude-agent-dashboard
+git clone https://github.com/cfirz/agent-advisor.git
+cd agent-advisor
 install.bat
 ```
 
@@ -99,13 +99,13 @@ If you prefer not to use the plugin system, add the hooks directly to your Claud
 ### 1. Start the dashboard server
 
 ```bash
-node /path/to/agent-dashboard/server/server.mjs
+node /path/to/agent-advisor/server/server.mjs
 ```
 
 The server starts on port 8099 by default. Override with:
 
 ```bash
-PORT=9000 node /path/to/agent-dashboard/server/server.mjs
+PORT=9000 node /path/to/agent-advisor/server/server.mjs
 ```
 
 ### 2. Open the dashboard
@@ -205,7 +205,7 @@ The dashboard includes an AI-powered advisor that analyzes subagent performance 
 
 **How it works:**
 1. Performance metrics (runs, tokens, errors, tool frequency) accumulate automatically as agents work
-2. Run `/agent-dashboard:advisor` in Claude Code to analyze metrics and generate suggestions
+2. Run `/agent-advisor:advisor` in Claude Code to analyze metrics and generate suggestions
 3. Suggestions appear in the Advisor panel in the dashboard with approve/dismiss buttons
 4. Approving a suggestion writes the agent `.md` file to `.claude/agents/` automatically
 
@@ -254,7 +254,7 @@ Metrics and suggestions are persisted to `.claude/advisor-data/` and survive ser
 ## Files
 
 ```
-claude-agent-dashboard/
+agent-advisor/
 ├── .claude-plugin/
 │   └── plugin.json              # Plugin manifest (metadata, hooks, skills)
 ├── hooks/
@@ -265,9 +265,9 @@ claude-agent-dashboard/
 │   └── dashboard.html           # Single-page dashboard (inline CSS/JS, dark theme)
 ├── skills/
 │   ├── dashboard/
-│   │   └── SKILL.md             # /agent-dashboard:dashboard slash command
+│   │   └── SKILL.md             # /agent-advisor:dashboard slash command
 │   └── advisor/
-│       └── SKILL.md             # /agent-dashboard:advisor slash command
+│       └── SKILL.md             # /agent-advisor:advisor slash command
 ├── install.bat                  # Windows quick-install script for hooks
 ├── marketplace.json             # Marketplace catalog for plugin distribution
 ├── CLAUDE.md                    # Project guidance for Claude Code

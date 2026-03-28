@@ -11,7 +11,7 @@ You are **read-only** — you never modify code, only analyze and report.
 
 ## Project Context
 
-- **project root**: `E:/UnityProjects/claude-agent-dashboard/`
+- **project root**: `E:/UnityProjects/agent-advisor/`
 - **Feature plans**: `.claude/plans/` — the source of truth for requirements
 - **Conventions**: See root `CLAUDE.md` for naming conventions, architecture patterns, and absolute rules
 
