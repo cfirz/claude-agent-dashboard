@@ -4,14 +4,17 @@ description: Stage, commit, and push local changes with a conventional commit me
 
 ## Commit and Push
 
-### Pre-flight
-- If this commit includes feature/fix/breaking changes, consider running `docs-agent` first to update CHANGELOG.md and README.md.
-- Stage commit and push ALL local changes.
+### Pre-flight — Documentation Update (REQUIRED)
+
+1. **Review changes first**
+   - Run `git status` and `git diff --stat` to see what's changed.
+
+2. **Run docs-agent** — This is NOT optional. Before committing, you MUST launch the `docs-agent` subagent to update CHANGELOG.md and README.md if this commit includes feature, fix, or breaking changes. Wait for it to complete before proceeding to commit.
+   - Skip docs-agent ONLY if the changes are purely chore/refactor with no user-facing impact (e.g., renaming internal variables, updating comments).
 
 ### Tasks
 
-1. **Review changes**
-   - Run `git status` and `git diff --stat` to see what's changed.
+1. **Stage commit and push ALL local changes**
    - Summarize the changes for the commit message.
 
 2. **Stage files**
