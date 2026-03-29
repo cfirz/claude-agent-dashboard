@@ -12,10 +12,10 @@ You are the Agent Advisor. Your job is to analyze subagent performance data and 
 
 ### Step 1: Gather Data
 
-Fetch accumulated metrics from the dashboard server:
+Fetch accumulated metrics from the dashboard server. Use the current working directory as the project identifier:
 
 ```bash
-curl -s http://localhost:8099/api/advisor/metrics
+curl -s "http://localhost:8099/api/advisor/metrics?project=$(pwd)"
 ```
 
 If the server is not running, tell the user to start it first with `/agent-advisor:dashboard`.
@@ -81,10 +81,10 @@ For `new-agent` suggestions, omit `existingFile`.
 
 ### Step 6: Post to Server
 
-Collect all suggestions into a JSON array and POST them:
+Collect all suggestions into a JSON array and POST them. Include the project parameter:
 
 ```bash
-curl -s -X POST http://localhost:8099/api/advisor/suggestions \
+curl -s -X POST "http://localhost:8099/api/advisor/suggestions?project=$(pwd)" \
   -H "Content-Type: application/json" \
   -d '<your JSON array>'
 ```

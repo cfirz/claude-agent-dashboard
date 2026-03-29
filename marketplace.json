@@ -5,7 +5,11 @@
     {
       "name": "agent-advisor",
       "source": "./",
-      "description": "Real-time dashboard for monitoring Claude Code subagent activity"
+      "description": "Real-time dashboard for monitoring Claude Code subagent activity",
+	  "version": "1.0.0",
+	  "author": {
+        "name": "Cfir Zioni"
+      }
     }
   ]
 }

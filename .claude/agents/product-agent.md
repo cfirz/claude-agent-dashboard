@@ -1,7 +1,7 @@
 ---
 name: product-agent
 description: Use for feature research, requirements analysis, and scope definition. Explores the codebase, identifies what exists vs. what needs to change, surfaces edge cases and dependencies, and produces a structured feature spec. Launch this agent before implementation to ensure requirements are clear and complete.
-tools: Read, Glob, Grep, WebSearch, WebFetch
+tools: Read, Glob, Grep, Bash, WebSearch, WebFetch
 model: opus
 ---
 

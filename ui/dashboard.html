@@ -12,9 +12,9 @@
     --bg-overlay: #2e2e32;
     --border-default: #3f3f46;
     --border-subtle: #27272a;
-    --text-primary: #fafafa;
-    --text-secondary: #a1a1aa;
-    --text-tertiary: #52525b;
+    --text-primary: #f0f0f2;
+    --text-secondary: #b4b4bf;
+    --text-tertiary: #71717a;
     --accent: #a78bfa;
     --accent-dim: #7c3aed;
     --accent-subtle: #3b2670;
@@ -29,13 +29,13 @@
     --status-error: #f87171;
     --status-error-bg: #2a1215;
     --status-error-border: #7f1d1d;
-    --status-idle: #52525b;
+    --status-idle: #71717a;
     --sidebar-bg: #0a0a0c;
-    --sidebar-width: 240px;
+    --sidebar-width: 250px;
     --mono-font: 'SF Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace;
     --radius-sm: 6px;
-    --radius-md: 8px;
-    --radius-lg: 10px;
+    --radius-md: 10px;
+    --radius-lg: 12px;
   }
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -70,15 +70,15 @@
   }
 
   .sidebar-logo {
-    width: 22px; height: 22px; border-radius: 6px;
+    width: 28px; height: 28px; border-radius: 8px;
     background: var(--accent-dim); display: flex; align-items: center; justify-content: center;
-    font-size: 12px; font-weight: 700; color: #fff; flex-shrink: 0;
+    font-size: 14px; font-weight: 700; color: #fff; flex-shrink: 0;
   }
 
-  .sidebar-brand { font-size: 14px; font-weight: 600; color: var(--text-primary); flex: 1; }
+  .sidebar-brand { font-size: 15px; font-weight: 600; color: var(--text-primary); flex: 1; }
 
   .conn-dot-sm {
-    width: 7px; height: 7px; border-radius: 50%; background: var(--status-error); flex-shrink: 0;
+    width: 9px; height: 9px; border-radius: 50%; background: var(--status-error); flex-shrink: 0;
     transition: background 0.3s;
   }
   .conn-dot-sm.connected { background: var(--status-active); }
@@ -93,9 +93,9 @@
 
   .nav-item {
     display: flex; align-items: center; gap: 10px;
-    padding: 8px 16px; font-size: 13px; color: var(--text-secondary);
+    padding: 10px 16px; font-size: 14px; color: var(--text-secondary);
     cursor: pointer; text-decoration: none; transition: background 0.15s, color 0.15s;
-    border-left: 3px solid transparent;
+    border-left: 3px solid transparent; min-height: 44px;
   }
   .nav-item:hover { background: var(--bg-surface-hover); color: var(--text-primary); }
   .nav-item.active {
@@ -103,28 +103,28 @@
     border-left-color: var(--accent);
   }
 
-  .nav-icon { width: 16px; height: 16px; opacity: 0.6; flex-shrink: 0; }
+  .nav-icon { width: 20px; height: 20px; opacity: 0.6; flex-shrink: 0; }
   .nav-item.active .nav-icon, .nav-item:hover .nav-icon { opacity: 1; }
 
   .nav-section {
-    padding: 16px 16px 6px;
-    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+    padding: 18px 16px 8px;
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
     color: var(--text-tertiary);
     display: flex; align-items: center; justify-content: space-between;
   }
 
   .nav-section-btn {
     background: none; border: 1px solid var(--border-default); color: var(--text-tertiary);
-    width: 18px; height: 18px; border-radius: 4px; cursor: pointer;
+    width: 28px; height: 28px; border-radius: 6px; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
-    font-size: 14px; line-height: 1; transition: all 0.15s;
+    font-size: 16px; line-height: 1; transition: all 0.15s;
   }
   .nav-section-btn:hover { border-color: var(--accent); color: var(--accent); }
 
   .nav-agent-item {
     display: flex; align-items: center; gap: 10px;
-    padding: 6px 16px 6px 20px; font-size: 13px; color: var(--text-secondary);
-    cursor: pointer; transition: all 0.15s; border-left: 3px solid transparent;
+    padding: 8px 16px 8px 20px; font-size: 13px; color: var(--text-secondary);
+    cursor: pointer; transition: all 0.15s; border-left: 3px solid transparent; min-height: 40px;
   }
   .nav-agent-item:hover { background: var(--bg-surface-hover); color: var(--text-primary); }
   .nav-agent-item.active {
@@ -133,21 +133,21 @@
   }
 
   .nav-agent-dot {
-    width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+    width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0;
     background: var(--status-idle);
   }
   .nav-agent-dot.working { background: var(--status-active); animation: pulse 1.5s ease-in-out infinite; }
   .nav-agent-dot.completed { background: var(--status-completed); }
 
-  .nav-empty { padding: 8px 20px; font-size: 12px; color: var(--text-tertiary); font-style: italic; }
+  .nav-empty { padding: 10px 20px; font-size: 13px; color: var(--text-tertiary); font-style: italic; }
 
   /* --- Main Area --- */
   .main-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
 
   .breadcrumb-bar {
-    padding: 10px 24px; font-size: 12px; color: var(--text-tertiary);
+    padding: 12px 24px; font-size: 13px; color: var(--text-tertiary);
     border-bottom: 1px solid var(--border-subtle); background: var(--bg-surface);
-    display: flex; align-items: center; gap: 6px; flex-shrink: 0;
+    display: flex; align-items: center; gap: 8px; flex-shrink: 0;
   }
   .breadcrumb-bar a { color: var(--text-secondary); text-decoration: none; }
   .breadcrumb-bar a:hover { color: var(--text-primary); }
@@ -161,7 +161,7 @@
     display: flex; align-items: center; justify-content: space-between;
     margin-bottom: 24px; gap: 16px; flex-wrap: wrap;
   }
-  .page-title { font-size: 20px; font-weight: 600; }
+  .page-title { font-size: 22px; font-weight: 600; }
   .page-header-actions { display: flex; gap: 8px; }
 
   /* --- Buttons --- */
@@ -187,27 +187,44 @@
     background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-md);
     padding: 16px; display: flex; flex-direction: column; gap: 4px;
   }
-  .stat-card-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-tertiary); font-weight: 600; }
-  .stat-card-value { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
-  .stat-card-sub { font-size: 11px; color: var(--text-tertiary); }
+  .stat-card-label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-tertiary); font-weight: 600; }
+  .stat-card-value { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .stat-card-sub { font-size: 12px; color: var(--text-tertiary); }
 
   /* --- Agent Cards Grid --- */
   .agents-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; margin-bottom: 24px; }
 
   .agent-card {
     background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-md);
-    padding: 16px; display: flex; flex-direction: column; gap: 10px;
+    padding: 18px; display: flex; flex-direction: column; gap: 12px;
     transition: border-color 0.2s, box-shadow 0.2s;
   }
-  .agent-card.working { border-color: var(--status-active-border); box-shadow: 0 0 12px rgba(74,222,128,0.08); }
-  .agent-card.completed { border-color: #1e40af; box-shadow: 0 0 12px rgba(96,165,250,0.08); }
+  .agent-card.working { border-color: var(--status-active-border); box-shadow: 0 0 16px rgba(74,222,128,0.1); }
+  .agent-card.completed { border-color: #1e40af; box-shadow: 0 0 16px rgba(96,165,250,0.1); }
   .agent-card.stale { border-color: #854d0e; opacity: 0.7; }
 
   .agent-header { display: flex; align-items: center; justify-content: space-between; }
-  .agent-name { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .agent-name { font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
 
+  .agent-type-icon {
+    width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; background: var(--bg-overlay); border: 1px solid var(--border-subtle);
+  }
+
+  .status-indicator {
+    width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; line-height: 1;
+  }
+  .status-indicator.idle { background: var(--status-idle); }
+  .status-indicator.working { background: var(--status-active); animation: pulse 1.5s ease-in-out infinite; }
+  .status-indicator.completed { background: var(--status-completed); }
+  .status-indicator.stale { background: var(--status-warning); animation: pulse 2s ease-in-out infinite; }
+
+  /* Legacy status-dot kept for sidebar and detail pages */
   .status-dot {
-    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+    width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
     background: var(--status-idle);
   }
   .status-dot.idle { background: var(--status-idle); }
@@ -218,23 +235,23 @@
   @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 
   .status-label {
-    font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
-    padding: 2px 8px; border-radius: 10px;
+    font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
+    padding: 3px 10px; border-radius: 10px;
     background: var(--bg-overlay); color: var(--text-tertiary);
   }
   .status-label.working { background: var(--status-active-bg); color: var(--status-active); }
   .status-label.completed { background: var(--status-completed-bg); color: var(--status-completed); }
   .status-label.stale { background: var(--status-warning-bg); color: var(--status-warning); }
 
-  .agent-header-right { display: flex; align-items: center; gap: 6px; }
+  .agent-header-right { display: flex; align-items: center; gap: 8px; }
 
   .error-badge {
-    display: none; font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 10px;
+    display: none; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 10px;
     background: var(--status-error-bg); color: var(--status-error); border: 1px solid var(--status-error-border);
   }
   .error-badge.visible { display: inline-block; }
 
-  .agent-activity { font-size: 13px; color: var(--text-secondary); min-height: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .agent-activity { font-size: 13px; color: var(--text-secondary); min-height: 20px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .agent-card.working .agent-activity { color: var(--text-primary); }
 
   .agent-error { font-size: 12px; color: var(--status-error); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: none; }
@@ -243,34 +260,36 @@
   .tag-row { display: flex; flex-wrap: wrap; gap: 4px; min-height: 0; }
 
   .skill-tag {
-    font-size: 10px; font-weight: 500; padding: 2px 8px; border-radius: 10px;
+    font-size: 11px; font-weight: 500; padding: 3px 10px; border-radius: 10px;
     background: var(--accent-bg); color: var(--accent); border: 1px solid var(--accent-subtle);
   }
 
   .tool-tag {
-    font-size: 10px; font-weight: 500; padding: 2px 8px; border-radius: 10px;
+    font-size: 11px; font-weight: 500; padding: 3px 10px; border-radius: 10px;
     background: #261f0a; color: #eab308; border: 1px solid #4a3a0a;
   }
 
   .agent-tokens {
-    display: none; align-items: center; gap: 8px; font-size: 11px;
-    font-family: var(--mono-font); color: var(--status-active);
+    display: none; align-items: center; gap: 8px; font-size: 12px;
+    color: var(--text-secondary);
   }
   .agent-tokens.visible { display: flex; }
-  .agent-tokens .token-label { color: var(--text-tertiary); font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .agent-tokens .token-label { color: var(--text-tertiary); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .agent-tokens .token-value { font-family: var(--mono-font); color: var(--status-active); }
 
-  .agent-footer { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-tertiary); }
+  .agent-footer { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text-tertiary); padding-top: 4px; border-top: 1px solid var(--border-subtle); }
   .clear-btn {
-    font-size: 10px; font-weight: 500; padding: 2px 10px; border-radius: 10px;
+    font-size: 11px; font-weight: 500; padding: 4px 12px; border-radius: 10px;
     background: var(--bg-overlay); color: var(--text-secondary); border: 1px solid var(--border-default);
     cursor: pointer; display: none; transition: all 0.15s; font-family: inherit;
+    min-height: 28px;
   }
   .clear-btn:hover { background: var(--bg-surface-hover); color: var(--text-primary); }
   .agent-card.idle .clear-btn { display: inline-block; }
 
   .empty-state { text-align: center; padding: 60px 20px; color: var(--text-tertiary); }
   .empty-state h2 { font-size: 18px; font-weight: 500; margin-bottom: 8px; color: var(--text-secondary); }
-  .empty-state p { font-size: 13px; margin-bottom: 16px; }
+  .empty-state p { font-size: 14px; margin-bottom: 16px; line-height: 1.6; }
 
   /* --- Session Bar --- */
   .session-bar {
@@ -280,8 +299,8 @@
   }
   .session-bar.active { display: flex; }
   .session-stat { display: flex; align-items: center; gap: 6px; }
-  .session-stat .s-label { color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.5px; font-size: 10px; font-weight: 600; }
-  .session-stat .s-value { font-variant-numeric: tabular-nums; font-family: var(--mono-font); color: var(--text-primary); font-size: 12px; }
+  .session-stat .s-label { color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.5px; font-size: 11px; font-weight: 600; }
+  .session-stat .s-value { font-variant-numeric: tabular-nums; font-family: var(--mono-font); color: var(--text-primary); font-size: 13px; }
   .session-stat .s-value.tokens { color: var(--status-active); }
   .session-stat .s-value.errors { color: var(--status-error); }
   .session-stat .s-value.no-errors { color: var(--text-tertiary); }
@@ -290,37 +309,50 @@
   /* --- Log Section --- */
   .log-section { flex: 1; min-height: 0; display: flex; flex-direction: column; }
   .log-header-bar {
-    font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
-    color: var(--text-secondary); margin-bottom: 8px; display: flex; align-items: center;
+    font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
+    color: var(--text-secondary); margin-bottom: 10px; display: flex; align-items: center;
     justify-content: space-between;
   }
-  .log-count { font-weight: 400; font-size: 11px; color: var(--text-tertiary); }
+  .log-count { font-weight: 400; font-size: 12px; color: var(--text-tertiary); text-transform: none; letter-spacing: 0; }
   .log-container {
     flex: 1; min-height: 120px; overflow-y: auto;
     background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-md);
-    font-family: var(--mono-font); font-size: 11px; line-height: 1.6;
+    font-size: 12px; line-height: 1.6;
   }
-  .log-container::-webkit-scrollbar { width: 4px; }
+  .log-container::-webkit-scrollbar { width: 5px; }
   .log-container::-webkit-scrollbar-track { background: transparent; }
-  .log-container::-webkit-scrollbar-thumb { background: var(--border-default); border-radius: 2px; }
+  .log-container::-webkit-scrollbar-thumb { background: var(--border-default); border-radius: 3px; }
 
-  .log-entry { padding: 2px 12px; border-bottom: 1px solid transparent; display: flex; gap: 10px; }
+  .log-entry {
+    padding: 6px 14px; border-bottom: 1px solid var(--border-subtle); display: flex; gap: 12px; align-items: flex-start;
+    transition: background 0.1s;
+  }
+  .log-entry:last-child { border-bottom: none; }
   .log-entry:hover { background: var(--bg-surface-hover); }
-  .log-time { color: var(--text-tertiary); flex-shrink: 0; }
-  .log-agent { color: var(--accent); flex-shrink: 0; min-width: 100px; }
+  .log-icon {
+    width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0; margin-top: 1px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; background: var(--bg-overlay); color: var(--text-tertiary);
+  }
+  .log-icon.log-icon-error { background: var(--status-error-bg); color: var(--status-error); }
+  .log-icon.log-icon-session { background: var(--status-active-bg); color: var(--status-active); }
+  .log-icon.log-icon-notification { background: var(--status-completed-bg); color: var(--status-completed); }
+  .log-icon.log-icon-skill { background: var(--accent-bg); color: var(--accent); }
+  .log-time { color: var(--text-tertiary); flex-shrink: 0; font-family: var(--mono-font); font-size: 11px; min-width: 65px; }
+  .log-agent { color: var(--accent); flex-shrink: 0; min-width: 100px; font-weight: 500; font-size: 12px; }
   .log-msg { color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .log-msg.log-skill { color: var(--accent); }
-  .log-msg.log-error { color: var(--status-error); }
+  .log-msg.log-error { color: var(--status-error); font-weight: 500; }
   .log-msg.log-notification { color: var(--status-completed); }
   .log-msg.log-session { color: var(--status-active); }
-  .log-empty { padding: 20px; text-align: center; color: var(--text-tertiary); font-style: italic; }
+  .log-empty { padding: 24px; text-align: center; color: var(--text-tertiary); font-size: 13px; }
 
   /* --- Filter Bar --- */
   .filter-bar { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
   .filter-select, .filter-input {
-    font-size: 12px; font-family: inherit; padding: 6px 10px; border-radius: var(--radius-sm);
+    font-size: 13px; font-family: inherit; padding: 8px 12px; border-radius: var(--radius-sm);
     border: 1px solid var(--border-default); background: var(--bg-surface); color: var(--text-primary);
-    outline: none; transition: border-color 0.15s;
+    outline: none; transition: border-color 0.15s; min-height: 38px;
   }
   .filter-select:focus, .filter-input:focus { border-color: var(--accent); }
   .filter-input { flex: 1; min-width: 150px; }
@@ -338,9 +370,10 @@
   }
   .advisor-header-row:hover { background: var(--bg-surface-hover); }
   .advisor-panel.expanded .advisor-header-row { border-bottom-color: var(--border-subtle); }
-  .advisor-title { display: flex; align-items: center; gap: 10px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--accent); }
-  .advisor-badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px; background: var(--accent-subtle); color: var(--accent); min-width: 20px; text-align: center; }
-  .advisor-toggle { font-size: 11px; color: var(--text-tertiary); transition: transform 0.2s; }
+  .advisor-title { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 600; letter-spacing: 0.3px; color: var(--accent); }
+  .advisor-subtitle { font-size: 12px; color: var(--text-tertiary); font-weight: 400; margin-left: 4px; }
+  .advisor-badge { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 10px; background: var(--accent-subtle); color: var(--accent); min-width: 22px; text-align: center; }
+  .advisor-toggle { font-size: 12px; color: var(--text-tertiary); transition: transform 0.2s; }
   .advisor-panel.expanded .advisor-toggle { transform: rotate(180deg); }
   .advisor-body { display: none; padding: 12px; gap: 12px; flex-direction: column; }
   .advisor-panel.expanded .advisor-body { display: flex; }
@@ -357,20 +390,21 @@
   .suggestion-card.dismissed { border-left-color: var(--text-tertiary); opacity: 0.4; }
 
   .suggestion-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-  .suggestion-type-badge { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 2px 8px; border-radius: 10px; }
+  .suggestion-type-badge { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 3px 10px; border-radius: 10px; }
   .suggestion-type-badge.new-agent { background: var(--accent-bg); color: var(--accent); }
   .suggestion-type-badge.improve-agent { background: var(--status-completed-bg); color: var(--status-completed); }
-  .suggestion-title { font-size: 13px; font-weight: 600; color: var(--text-primary); flex: 1; }
-  .suggestion-status-label { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 10px; }
+  .suggestion-title { font-size: 14px; font-weight: 600; color: var(--text-primary); flex: 1; }
+  .suggestion-status-label { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 10px; }
   .suggestion-status-label.pending { background: var(--status-warning-bg); color: var(--status-warning); }
   .suggestion-status-label.approved { background: var(--status-active-bg); color: var(--status-active); }
   .suggestion-status-label.dismissed { background: var(--bg-overlay); color: var(--text-tertiary); }
-  .suggestion-summary { font-size: 12px; color: var(--text-secondary); line-height: 1.5; }
+  .suggestion-summary { font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
   .suggestion-actions { display: flex; gap: 6px; }
   .suggestion-actions button {
-    font-size: 11px; font-weight: 500; padding: 5px 12px; border-radius: var(--radius-sm);
+    font-size: 12px; font-weight: 500; padding: 6px 14px; border-radius: var(--radius-sm);
     border: 1px solid var(--border-default); cursor: pointer; transition: all 0.15s;
     background: var(--bg-overlay); color: var(--text-secondary); font-family: inherit;
+    min-height: 32px;
   }
   .suggestion-actions button:hover { background: var(--bg-surface-hover); color: var(--text-primary); }
   .suggestion-actions button:disabled { opacity: 0.4; cursor: default; pointer-events: none; }
@@ -378,6 +412,8 @@
   .btn-approve:hover { background: var(--status-active-bg) !important; }
   .btn-dismiss { color: var(--text-tertiary) !important; }
   .btn-details { color: var(--status-completed) !important; }
+  .btn-clear { color: var(--status-error) !important; border-color: var(--status-error-border, var(--border-default)) !important; }
+  .btn-clear:hover { background: var(--status-error-bg) !important; }
 
   .suggestion-detail { display: none; background: var(--bg-base); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); overflow: hidden; }
   .suggestion-detail.visible { display: block; }
@@ -400,10 +436,10 @@
   /* --- Tabs --- */
   .tab-bar { display: flex; gap: 0; border-bottom: 1px solid var(--border-subtle); margin-bottom: 20px; }
   .tab-item {
-    padding: 10px 18px; cursor: pointer; font-size: 13px; font-weight: 500;
+    padding: 12px 20px; cursor: pointer; font-size: 14px; font-weight: 500;
     color: var(--text-secondary); border-bottom: 2px solid transparent;
     transition: all 0.15s; background: none; border-top: none; border-left: none; border-right: none;
-    font-family: inherit;
+    font-family: inherit; min-height: 44px;
   }
   .tab-item:hover { color: var(--text-primary); }
   .tab-item.active { border-bottom-color: var(--accent); color: var(--accent); }
@@ -418,9 +454,9 @@
   .agent-list-row:hover { background: var(--bg-surface-hover); }
   .agent-list-row:last-child { border-bottom: none; }
   .agent-list-name { font-size: 14px; font-weight: 500; color: var(--text-primary); min-width: 160px; }
-  .agent-list-model { font-size: 11px; padding: 2px 8px; border-radius: 10px; background: var(--accent-bg); color: var(--accent); font-weight: 500; }
-  .agent-list-tools { font-size: 11px; color: var(--text-tertiary); min-width: 60px; }
-  .agent-list-desc { font-size: 12px; color: var(--text-secondary); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .agent-list-model { font-size: 12px; padding: 3px 10px; border-radius: 10px; background: var(--accent-bg); color: var(--accent); font-weight: 500; }
+  .agent-list-tools { font-size: 12px; color: var(--text-tertiary); min-width: 60px; }
+  .agent-list-desc { font-size: 13px; color: var(--text-secondary); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
   /* --- Agent Detail --- */
   .detail-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 4px; flex-wrap: wrap; }
@@ -436,9 +472,9 @@
 
   /* --- Form Styles --- */
   .form-group { margin-bottom: 20px; }
-  .form-label { display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .form-label { display: block; font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
   .form-input, .form-select, .form-textarea {
-    width: 100%; font-size: 13px; font-family: inherit; padding: 9px 12px;
+    width: 100%; font-size: 14px; font-family: inherit; padding: 10px 14px;
     border-radius: var(--radius-sm); border: 1px solid var(--border-default);
     background: var(--bg-base); color: var(--text-primary); outline: none;
     transition: border-color 0.15s;
@@ -447,17 +483,17 @@
   .form-input:disabled { opacity: 0.5; cursor: not-allowed; }
   .form-textarea { resize: vertical; line-height: 1.5; }
   .form-textarea.mono { font-family: var(--mono-font); font-size: 12px; }
-  .form-hint { font-size: 11px; color: var(--text-tertiary); margin-top: 4px; }
-  .form-error { color: var(--status-error); font-size: 12px; padding: 10px; background: var(--status-error-bg); border: 1px solid var(--status-error-border); border-radius: var(--radius-sm); margin-bottom: 16px; display: none; }
+  .form-hint { font-size: 12px; color: var(--text-tertiary); margin-top: 6px; }
+  .form-error { color: var(--status-error); font-size: 13px; padding: 12px; background: var(--status-error-bg); border: 1px solid var(--status-error-border); border-radius: var(--radius-sm); margin-bottom: 16px; display: none; }
   .form-error.visible { display: block; }
 
   /* Tool Picker */
   .tool-picker { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
   .tool-chip {
-    font-size: 12px; font-weight: 500; padding: 4px 12px; border-radius: 16px;
+    font-size: 13px; font-weight: 500; padding: 6px 14px; border-radius: 16px;
     border: 1px solid var(--border-default); background: var(--bg-surface);
     color: var(--text-secondary); cursor: pointer; transition: all 0.15s;
-    user-select: none; font-family: inherit;
+    user-select: none; font-family: inherit; min-height: 32px;
   }
   .tool-chip:hover { border-color: var(--accent); color: var(--text-primary); }
   .tool-chip.selected { background: var(--accent-bg); color: var(--accent); border-color: var(--accent-subtle); }
@@ -479,16 +515,16 @@
 
   /* --- Runs table --- */
   .runs-table { width: 100%; border-collapse: collapse; }
-  .runs-table th { text-align: left; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-tertiary); padding: 8px 12px; border-bottom: 1px solid var(--border-default); }
-  .runs-table td { font-size: 12px; padding: 8px 12px; border-bottom: 1px solid var(--border-subtle); color: var(--text-secondary); font-family: var(--mono-font); }
+  .runs-table th { text-align: left; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-tertiary); padding: 10px 14px; border-bottom: 1px solid var(--border-default); }
+  .runs-table td { font-size: 13px; padding: 10px 14px; border-bottom: 1px solid var(--border-subtle); color: var(--text-secondary); font-family: var(--mono-font); }
   .runs-table tr:hover td { background: var(--bg-surface-hover); }
 
   /* --- Tool frequency bars --- */
   .tool-freq-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-  .tool-freq-name { font-size: 12px; color: var(--text-secondary); min-width: 100px; text-align: right; }
-  .tool-freq-bar-bg { flex: 1; height: 14px; background: var(--bg-surface); border-radius: 3px; overflow: hidden; }
-  .tool-freq-bar { height: 100%; background: var(--accent-subtle); border-radius: 3px; transition: width 0.3s; }
-  .tool-freq-count { font-size: 11px; color: var(--text-tertiary); min-width: 30px; font-family: var(--mono-font); }
+  .tool-freq-name { font-size: 13px; color: var(--text-secondary); min-width: 100px; text-align: right; }
+  .tool-freq-bar-bg { flex: 1; height: 18px; background: var(--bg-surface); border-radius: 4px; overflow: hidden; }
+  .tool-freq-bar { height: 100%; background: var(--accent-subtle); border-radius: 4px; transition: width 0.3s; }
+  .tool-freq-count { font-size: 12px; color: var(--text-tertiary); min-width: 30px; font-family: var(--mono-font); }
 
   /* --- Instructions display --- */
   .instructions-display {
@@ -513,6 +549,86 @@
 
   /* --- Select option styling --- */
   .form-select option { background: var(--bg-base); color: var(--text-primary); }
+
+  /* --- Project Tab Bar --- */
+  .project-tabs {
+    display: flex; align-items: center; gap: 0;
+    padding: 0 16px; border-bottom: 1px solid var(--border-subtle);
+    background: var(--sidebar-bg); overflow-x: auto; flex-shrink: 0;
+    scrollbar-width: none;
+  }
+  .project-tabs::-webkit-scrollbar { display: none; }
+  .project-tab {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 16px; cursor: pointer; font-size: 12px; font-weight: 500;
+    color: var(--text-secondary); border-bottom: 2px solid transparent;
+    white-space: nowrap; transition: all 0.15s; flex-shrink: 0;
+  }
+  .project-tab:hover { color: var(--text-primary); background: var(--bg-surface-hover); }
+  .project-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .project-tab-dot {
+    width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+    background: var(--status-idle);
+  }
+  .project-tab-dot.active-session { background: var(--status-active); animation: pulse 1.5s ease-in-out infinite; }
+  .project-tab-empty {
+    padding: 10px 16px; font-size: 12px; color: var(--text-tertiary); font-style: italic;
+  }
+
+  /* --- Onboarding Overlay --- */
+  .onboarding-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75);
+    z-index: 2000; align-items: center; justify-content: center;
+  }
+  .onboarding-overlay.visible { display: flex; }
+  .onboarding-box {
+    background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: var(--radius-lg);
+    padding: 36px 32px; max-width: 520px; width: 90%; text-align: center;
+  }
+  .onboarding-icon { font-size: 40px; margin-bottom: 16px; }
+  .onboarding-title { font-size: 22px; font-weight: 700; margin-bottom: 12px; color: var(--text-primary); }
+  .onboarding-desc { font-size: 14px; color: var(--text-secondary); line-height: 1.7; margin-bottom: 24px; }
+  .onboarding-features { display: flex; gap: 16px; margin-bottom: 28px; flex-wrap: wrap; justify-content: center; }
+  .onboarding-feature {
+    background: var(--bg-base); border: 1px solid var(--border-subtle); border-radius: var(--radius-md);
+    padding: 14px 16px; flex: 1; min-width: 140px; text-align: center;
+  }
+  .onboarding-feature-icon { font-size: 22px; margin-bottom: 6px; }
+  .onboarding-feature-label { font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
+  .onboarding-feature-desc { font-size: 12px; color: var(--text-tertiary); line-height: 1.4; }
+  .onboarding-dismiss {
+    font-size: 14px; font-weight: 600; padding: 10px 28px; border-radius: var(--radius-sm);
+    background: var(--accent-dim); color: #fff; border: none; cursor: pointer; transition: background 0.15s;
+    font-family: inherit;
+  }
+  .onboarding-dismiss:hover { background: var(--accent); }
+
+  /* --- Tooltips --- */
+  [data-tooltip] { position: relative; cursor: help; }
+  [data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%);
+    background: var(--bg-overlay); color: var(--text-primary); border: 1px solid var(--border-default);
+    padding: 6px 12px; border-radius: var(--radius-sm); font-size: 12px; font-weight: 400;
+    white-space: nowrap; z-index: 100; pointer-events: none;
+    opacity: 0; transition: opacity 0.15s;
+    text-transform: none; letter-spacing: 0;
+  }
+  [data-tooltip]:hover::after { opacity: 1; }
+
+  /* --- Collapsible sections --- */
+  .collapsible-header {
+    display: flex; align-items: center; justify-content: space-between; cursor: pointer;
+    padding: 8px 0; user-select: none;
+  }
+  .collapsible-header:hover { opacity: 0.8; }
+  .collapsible-arrow { font-size: 12px; color: var(--text-tertiary); transition: transform 0.2s; }
+  .collapsible-header.expanded .collapsible-arrow { transform: rotate(180deg); }
+  .collapsible-body { display: none; }
+  .collapsible-header.expanded + .collapsible-body { display: block; }
+
+  /* --- Page title with subtitle --- */
+  .page-subtitle { font-size: 13px; color: var(--text-tertiary); font-weight: 400; margin-top: 2px; }
 </style>
 </head>
 <body>
@@ -524,6 +640,9 @@
       <div class="sidebar-logo">A</div>
       <span class="sidebar-brand">Agent Dashboard</span>
       <div class="conn-dot-sm" id="connDot" title="Disconnected"></div>
+    </div>
+    <div class="project-tabs" id="projectTabs">
+      <div class="project-tab-empty">No projects</div>
     </div>
     <nav class="sidebar-nav" id="sidebarNav">
       <div class="nav-item active" data-route="#/dashboard">
@@ -553,7 +672,36 @@
   </div>
 </div>
 
-<div class="advisor-toast" id="advisorToast">Run <strong>/agent-advisor:advisor</strong> in Claude Code to generate suggestions</div>
+<div class="advisor-toast" id="advisorToast">Type <strong>/advisor</strong> in your Claude Code chat to analyze metrics and generate suggestions</div>
+
+<!-- Onboarding Overlay -->
+<div class="onboarding-overlay" id="onboardingOverlay">
+  <div class="onboarding-box">
+    <div class="onboarding-icon">A</div>
+    <div class="onboarding-title">Welcome to Agent Dashboard</div>
+    <div class="onboarding-desc">
+      Monitor your Claude Code agents in real time. See what each agent is doing, track activity, and get suggestions to improve your setup.
+    </div>
+    <div class="onboarding-features">
+      <div class="onboarding-feature">
+        <div class="onboarding-feature-icon">&#x25CF;</div>
+        <div class="onboarding-feature-label">Live Status</div>
+        <div class="onboarding-feature-desc">See agents working in real time</div>
+      </div>
+      <div class="onboarding-feature">
+        <div class="onboarding-feature-icon">&#x2630;</div>
+        <div class="onboarding-feature-label">Activity Log</div>
+        <div class="onboarding-feature-desc">Track every action and event</div>
+      </div>
+      <div class="onboarding-feature">
+        <div class="onboarding-feature-icon">&#x2605;</div>
+        <div class="onboarding-feature-label">Agent Advisor</div>
+        <div class="onboarding-feature-desc">Get suggestions for improvements</div>
+      </div>
+    </div>
+    <button class="onboarding-dismiss" id="onboardingDismiss">Get Started</button>
+  </div>
+</div>
 
 <!-- Confirm Modal -->
 <div class="modal-overlay" id="modalOverlay">
@@ -570,10 +718,11 @@
 <script>
 (function() {
   // --- Global State ---
-  const agentRuntimeState = {}; // agentKey -> data from WS
-  const activityLogEntries = [];
+  // Per-project data storage
+  const projectDataMap = new Map(); // projectId -> { agentRuntimeState, activityLogEntries, sessionData, agentDefinitions }
+  let projectsList = []; // [{id, name, cwd, hasActiveSession, hasActiveAgents}]
+  let activeProjectId = localStorage.getItem('activeProject') || null;
   const MAX_LOG = 200;
-  let sessionData = {};
   let wsConnected = false;
   let ws = null;
   let reconnectDelay = 2000;
@@ -582,7 +731,28 @@
   let currentPage = null;
   let pageCleanup = null;
   let pageUpdateHandler = null;
-  let agentDefinitions = []; // from GET /api/agents
+
+  function getProjectData(projectId) {
+    if (!projectId) return { agentRuntimeState: {}, activityLogEntries: [], sessionData: {}, agentDefinitions: [] };
+    if (!projectDataMap.has(projectId)) {
+      projectDataMap.set(projectId, { agentRuntimeState: {}, activityLogEntries: [], sessionData: {}, agentDefinitions: [] });
+    }
+    return projectDataMap.get(projectId);
+  }
+  // Convenience getters for active project
+  function getActiveData() { return getProjectData(activeProjectId); }
+  // Aliases for backward compat in page renderers
+  function get_agentRuntimeState() { return getActiveData().agentRuntimeState; }
+  function get_activityLogEntries() { return getActiveData().activityLogEntries; }
+  function get_sessionData() { return getActiveData().sessionData; }
+  function get_agentDefinitions() { return getActiveData().agentDefinitions; }
+
+  // Build API URL with project param
+  function apiUrl(path) {
+    if (!activeProjectId) return path;
+    const sep = path.includes('?') ? '&' : '?';
+    return path + sep + 'project=' + encodeURIComponent(activeProjectId);
+  }
 
   // --- Utility Functions ---
   function escapeHtml(str) { const d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
@@ -614,10 +784,58 @@
     return String(n);
   }
 
+  // --- Agent type icons ---
+  function agentIcon(name) {
+    const n = (name || '').toLowerCase();
+    if (n.includes('review') || n.includes('code-review')) return '\u{1F50D}';
+    if (n.includes('test') || n.includes('qa')) return '\u{1F9EA}';
+    if (n.includes('doc')) return '\u{1F4DD}';
+    if (n.includes('explore') || n.includes('search')) return '\u{1F50E}';
+    if (n.includes('plan') || n.includes('architect')) return '\u{1F4D0}';
+    if (n.includes('product')) return '\u{1F4E6}';
+    if (n.includes('preview') || n.includes('ui')) return '\u{1F5BC}';
+    if (n === 'orchestrator') return '\u{1F3AF}';
+    return '\u{2699}';
+  }
+
+  // --- Log entry icons ---
+  function logIcon(entry) {
+    if (entry.level === 'error') return '\u{26A0}';
+    if (entry.level === 'session') return '\u{26A1}';
+    if (entry.level === 'notification') return '\u{1F514}';
+    if (entry.message && entry.message.startsWith('Running skill:')) return '\u{2728}';
+    return '\u{25B6}';
+  }
+  function logIconClass(entry) {
+    if (entry.level === 'error') return 'log-icon-error';
+    if (entry.level === 'session') return 'log-icon-session';
+    if (entry.level === 'notification') return 'log-icon-notification';
+    if (entry.message && entry.message.startsWith('Running skill:')) return 'log-icon-skill';
+    return '';
+  }
+
+  // --- Onboarding ---
+  const onboardingOverlay = document.getElementById('onboardingOverlay');
+  const onboardingDismiss = document.getElementById('onboardingDismiss');
+  if (!localStorage.getItem('onboardingSeen')) {
+    onboardingOverlay.classList.add('visible');
+  }
+  onboardingDismiss.addEventListener('click', () => {
+    onboardingOverlay.classList.remove('visible');
+    localStorage.setItem('onboardingSeen', 'true');
+  });
+  onboardingOverlay.addEventListener('click', (e) => {
+    if (e.target === onboardingOverlay) {
+      onboardingOverlay.classList.remove('visible');
+      localStorage.setItem('onboardingSeen', 'true');
+    }
+  });
+
   // --- Sidebar Elements ---
   const connDot = document.getElementById('connDot');
   const sidebarAgentList = document.getElementById('sidebarAgentList');
   const sidebarNav = document.getElementById('sidebarNav');
+  const projectTabsEl = document.getElementById('projectTabs');
   const pageContent = document.getElementById('pageContent');
   const breadcrumbs = document.getElementById('breadcrumbs');
   const advisorToast = document.getElementById('advisorToast');
@@ -640,6 +858,47 @@
   modalConfirm.addEventListener('click', () => { modalOverlay.classList.remove('visible'); if (modalResolve) modalResolve(true); });
   modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) { modalOverlay.classList.remove('visible'); if (modalResolve) modalResolve(false); } });
 
+  // --- Project Tabs ---
+  function renderProjectTabs() {
+    if (projectsList.length === 0) {
+      projectTabsEl.innerHTML = '<div class="project-tab-empty">No projects</div>';
+      return;
+    }
+    projectTabsEl.innerHTML = projectsList.map(p => {
+      const isActive = p.id === activeProjectId;
+      const dotClass = p.hasActiveAgents ? 'active-session' : '';
+      return '<div class="project-tab' + (isActive ? ' active' : '') + '" data-project="' + escapeHtml(p.id) + '" title="' + escapeHtml(p.cwd) + '"><div class="project-tab-dot ' + dotClass + '"></div>' + escapeHtml(p.name) + '</div>';
+    }).join('');
+    projectTabsEl.querySelectorAll('.project-tab').forEach(tab => {
+      tab.addEventListener('click', () => switchProject(tab.dataset.project));
+    });
+  }
+
+  function switchProject(projectId) {
+    if (projectId === activeProjectId) return;
+    activeProjectId = projectId;
+    localStorage.setItem('activeProject', projectId);
+    renderProjectTabs();
+    refreshSidebarAgents();
+    updateSidebarAgentDots();
+    // Re-render current page with new project data
+    routeChanged();
+  }
+
+  function updateProjectTabDots() {
+    projectTabsEl.querySelectorAll('.project-tab').forEach(tab => {
+      const pid = tab.dataset.project;
+      const dot = tab.querySelector('.project-tab-dot');
+      if (!dot) return;
+      const pd = getProjectData(pid);
+      let hasActive = false;
+      for (const key in pd.agentRuntimeState) {
+        if (pd.agentRuntimeState[key].status === 'working') { hasActive = true; break; }
+      }
+      dot.className = 'project-tab-dot' + (hasActive ? ' active-session' : '');
+    });
+  }
+
   // --- Sidebar Navigation ---
   document.getElementById('newAgentBtn').addEventListener('click', () => navigate('#/agents/new'));
 
@@ -659,14 +918,16 @@
   }
 
   async function refreshSidebarAgents() {
+    const pd = getActiveData();
     try {
-      const res = await fetch('/api/agents');
-      agentDefinitions = await res.json();
-    } catch { agentDefinitions = []; }
+      const res = await fetch(apiUrl('/api/agents'));
+      pd.agentDefinitions = await res.json();
+    } catch { pd.agentDefinitions = []; }
     renderSidebarAgents();
   }
 
   function renderSidebarAgents() {
+    const agentDefinitions = get_agentDefinitions();
     if (agentDefinitions.length === 0) {
       sidebarAgentList.innerHTML = '<div class="nav-empty">No agents defined</div>';
       return;
@@ -679,6 +940,7 @@
   }
 
   function updateSidebarAgentDots() {
+    const agentRuntimeState = get_agentRuntimeState();
     sidebarAgentList.querySelectorAll('.nav-agent-item').forEach(el => {
       const route = el.dataset.route;
       const name = route.replace('#/agents/', '');
@@ -690,6 +952,8 @@
       const dot = el.querySelector('.nav-agent-dot');
       if (dot) dot.className = 'nav-agent-dot' + (status === 'working' ? ' working' : status === 'completed' ? ' completed' : '');
     });
+    // Also update project tab dots
+    updateProjectTabDots();
   }
 
   // --- Breadcrumbs ---
@@ -766,17 +1030,17 @@
         <div class="session-divider"></div>
         <div class="session-stat"><span class="s-label">Agents</span><span class="s-value" id="pgAgentCount">0</span></div>
         <div class="session-divider"></div>
-        <div class="session-stat"><span class="s-label">Tokens In</span><span class="s-value tokens" id="pgTokIn">0</span></div>
-        <div class="session-stat"><span class="s-label">Tokens Out</span><span class="s-value tokens" id="pgTokOut">0</span></div>
+        <div class="session-stat"><span class="s-label" data-tooltip="Text processed by the AI">Tokens In</span><span class="s-value tokens" id="pgTokIn">0</span></div>
+        <div class="session-stat"><span class="s-label" data-tooltip="Text generated by the AI">Tokens Out</span><span class="s-value tokens" id="pgTokOut">0</span></div>
         <div class="session-divider"></div>
         <div class="session-stat"><span class="s-label">Errors</span><span class="s-value no-errors" id="pgErrors">0</span></div>
       </div>
       <div class="agents-grid" id="pgAgentsGrid">
-        <div class="empty-state" id="pgEmpty"><h2>No active agents</h2><p>Waiting for Claude Code subagent events...</p></div>
+        <div class="empty-state" id="pgEmpty"><h2>No active agents</h2><p>No agents are running right now. They will appear here when Claude Code starts working with subagents.</p></div>
       </div>
       <div class="advisor-panel" id="pgAdvisorPanel">
         <div class="advisor-header-row" id="pgAdvisorToggle">
-          <div class="advisor-title">Agent Advisor <span class="advisor-badge" id="pgAdvisorBadge">0</span></div>
+          <div class="advisor-title">Agent Advisor <span class="advisor-badge" id="pgAdvisorBadge">0</span><span class="advisor-subtitle">Suggestions to improve your agent setup</span></div>
           <span class="advisor-toggle">&#9660;</span>
         </div>
         <div class="advisor-body" id="pgAdvisorBody"></div>
@@ -784,7 +1048,7 @@
       <div class="log-section">
         <div class="log-header-bar">Activity Log <span class="log-count" id="pgLogCount">0 events</span></div>
         <div class="log-container" id="pgLogContainer" style="max-height:260px;">
-          <div class="log-empty">No activity recorded yet</div>
+          <div class="log-empty">No activity recorded yet. Events will appear here as agents work.</div>
         </div>
       </div>
     `;
@@ -806,6 +1070,9 @@
 
     // Stats
     function updateStats() {
+      const agentDefinitions = get_agentDefinitions();
+      const agentRuntimeState = get_agentRuntimeState();
+      const sessionData = get_sessionData();
       const defined = agentDefinitions.length;
       let activeNow = 0, totalRuns = 0, totalErrors = 0;
       for (const key in agentRuntimeState) {
@@ -813,10 +1080,10 @@
       }
       totalErrors = sessionData.totalErrors || 0;
       pgStats.innerHTML = `
-        <div class="stat-card"><div class="stat-card-label">Agents Defined</div><div class="stat-card-value">${defined}</div></div>
-        <div class="stat-card"><div class="stat-card-label">Active Now</div><div class="stat-card-value" style="color:var(--status-active)">${activeNow}</div></div>
-        <div class="stat-card"><div class="stat-card-label">Agents Spawned</div><div class="stat-card-value">${sessionData.agentCount || 0}</div></div>
-        <div class="stat-card"><div class="stat-card-label">Errors</div><div class="stat-card-value" style="color:${totalErrors > 0 ? 'var(--status-error)' : 'var(--text-tertiary)'}">${totalErrors}</div></div>
+        <div class="stat-card"><div class="stat-card-label" data-tooltip="Total agent definitions in .claude/agents/">Agents Defined</div><div class="stat-card-value">${defined}</div></div>
+        <div class="stat-card"><div class="stat-card-label" data-tooltip="Agents currently working on tasks">Active Now</div><div class="stat-card-value" style="color:var(--status-active)">${activeNow}</div></div>
+        <div class="stat-card"><div class="stat-card-label" data-tooltip="Agents started in this session">Agents Spawned</div><div class="stat-card-value">${sessionData.agentCount || 0}</div></div>
+        <div class="stat-card"><div class="stat-card-label" data-tooltip="Tool failures in this session">Errors</div><div class="stat-card-value" style="color:${totalErrors > 0 ? 'var(--status-error)' : 'var(--text-tertiary)'}">${totalErrors}</div></div>
       `;
     }
 
@@ -845,14 +1112,14 @@
       card.className = 'agent-card idle';
       card.innerHTML = `
         <div class="agent-header">
-          <div class="agent-name"><div class="status-dot idle"></div>${friendlyName(name)}<span style="color:var(--text-tertiary);font-size:11px;font-weight:400">${shortId}</span></div>
-          <div class="agent-header-right"><span class="error-badge"></span><span class="status-label idle">Idle</span><button class="clear-btn">Clear</button></div>
+          <div class="agent-name"><div class="agent-type-icon">${agentIcon(name)}</div><div class="status-indicator idle"></div>${friendlyName(name)}<span style="color:var(--text-tertiary);font-size:12px;font-weight:400">${shortId}</span></div>
+          <div class="agent-header-right"><span class="error-badge"></span><span class="status-label idle">Idle</span><button class="clear-btn" title="Remove this card from view">Clear</button></div>
         </div>
         <div class="agent-activity"></div>
         <div class="agent-error"></div>
         <div class="tag-row agent-skills"></div>
         <div class="tag-row agent-tools-tags"></div>
-        <div class="agent-tokens"><span class="token-label">Tokens</span><span class="token-in"></span><span style="color:var(--text-tertiary)">in /</span><span class="token-out"></span><span style="color:var(--text-tertiary)">out</span></div>
+        <div class="agent-tokens"><span class="token-label" data-tooltip="Text processed and generated by this agent">Tokens</span><span class="token-value token-in"></span><span style="color:var(--text-tertiary)">in /</span><span class="token-value token-out"></span><span style="color:var(--text-tertiary)">out</span></div>
         <div class="agent-footer"><span class="tool-count">0 tools</span><span class="last-seen">never</span></div>
       `;
       pgGrid.appendChild(card);
@@ -860,7 +1127,7 @@
         card.remove(); agentCards.delete(key); clearedAgents.add(key);
         if (agentCards.size === 0) pgEmpty.style.display = '';
       });
-      const refs = { el: card, dot: card.querySelector('.status-dot'), label: card.querySelector('.status-label'), activity: card.querySelector('.agent-activity'), errorEl: card.querySelector('.agent-error'), errorBadge: card.querySelector('.error-badge'), skills: card.querySelector('.agent-skills'), toolTags: card.querySelector('.agent-tools-tags'), tokensRow: card.querySelector('.agent-tokens'), tokenIn: card.querySelector('.token-in'), tokenOut: card.querySelector('.token-out'), tools: card.querySelector('.tool-count'), lastSeen: card.querySelector('.last-seen'), lastSeenTs: null };
+      const refs = { el: card, dot: card.querySelector('.status-indicator'), label: card.querySelector('.status-label'), activity: card.querySelector('.agent-activity'), errorEl: card.querySelector('.agent-error'), errorBadge: card.querySelector('.error-badge'), skills: card.querySelector('.agent-skills'), toolTags: card.querySelector('.agent-tools-tags'), tokensRow: card.querySelector('.agent-tokens'), tokenIn: card.querySelector('.token-in'), tokenOut: card.querySelector('.token-out'), tools: card.querySelector('.tool-count'), lastSeen: card.querySelector('.last-seen'), lastSeenTs: null };
       agentCards.set(key, refs);
       return refs;
     }
@@ -872,7 +1139,7 @@
       const vs = (status === 'working' && data.stale) ? 'stale' : status;
       const lt = vs === 'stale' ? 'Stale?' : status.charAt(0).toUpperCase() + status.slice(1);
       refs.el.className = 'agent-card ' + vs;
-      refs.dot.className = 'status-dot ' + vs;
+      refs.dot.className = 'status-indicator ' + vs;
       refs.label.className = 'status-label ' + vs;
       refs.label.textContent = lt;
       refs.activity.textContent = data.stale ? (data.activity ? data.activity + ' (no new events)' : 'No recent events') : (data.activity || '');
@@ -905,7 +1172,7 @@
       if (entry.level === 'error') mc += ' log-error';
       if (entry.level === 'notification') mc += ' log-notification';
       if (entry.level === 'session') mc += ' log-session';
-      div.innerHTML = '<span class="log-time">' + formatTime(entry.time) + '</span><span class="log-agent">[' + escapeHtml(entry.agent) + ']</span><span class="' + mc + '">' + escapeHtml(entry.message) + '</span>';
+      div.innerHTML = '<span class="log-icon ' + logIconClass(entry) + '">' + logIcon(entry) + '</span><span class="log-time">' + formatTime(entry.time) + '</span><span class="log-agent">' + escapeHtml(entry.agent) + '</span><span class="' + mc + '">' + escapeHtml(entry.message) + '</span>';
       pgLogContainer.appendChild(div);
       while (pgLogContainer.children.length > 100) pgLogContainer.removeChild(pgLogContainer.firstChild);
       pgLogContainer.scrollTop = pgLogContainer.scrollHeight;
@@ -933,6 +1200,19 @@
         card.querySelector('.btn-dismiss').disabled = data.status !== 'pending';
         if (data.status === 'approved') card.querySelector('.btn-approve').textContent = 'Approved';
         if (data.status === 'dismissed') card.querySelector('.btn-dismiss').textContent = 'Dismissed';
+        if (data.status !== 'pending' && !card.querySelector('.btn-clear')) {
+          const actions = card.querySelector('.suggestion-actions');
+          const cb = document.createElement('button');
+          cb.className = 'btn-clear'; cb.textContent = 'Clear';
+          cb.addEventListener('click', async () => {
+            cb.disabled = true; cb.textContent = 'Clearing...';
+            try {
+              await fetch(apiUrl('/api/advisor/clear'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id:data.id}) });
+              card.remove(); suggestionMap.delete(data.id); updateAdvisorBadge();
+            } catch { cb.disabled = false; cb.textContent = 'Clear'; }
+          });
+          actions.appendChild(cb);
+        }
       } else {
         const el = renderSuggestionCard(data);
         pgAdvisorBody.appendChild(el);
@@ -946,7 +1226,8 @@
       card.className = 'suggestion-card ' + data.type + ' ' + data.status;
       const typeLabel = data.type === 'new-agent' ? 'New' : 'Improve';
       const statusLabel = data.status.charAt(0).toUpperCase() + data.status.slice(1);
-      card.innerHTML = '<div class="suggestion-header"><span class="suggestion-type-badge ' + data.type + '">' + typeLabel + '</span><span class="suggestion-title">' + escapeHtml(data.title) + '</span><span class="suggestion-status-label ' + data.status + '">' + statusLabel + '</span></div><div class="suggestion-summary">' + escapeHtml(data.summary) + '</div><div class="suggestion-actions"><button class="btn-details">Details</button><button class="btn-approve"' + (data.status !== 'pending' ? ' disabled' : '') + '>Approve</button><button class="btn-dismiss"' + (data.status !== 'pending' ? ' disabled' : '') + '>Dismiss</button></div><div class="suggestion-detail"></div>';
+      const clearBtn = data.status !== 'pending' ? '<button class="btn-clear">Clear</button>' : '';
+      card.innerHTML = '<div class="suggestion-header"><span class="suggestion-type-badge ' + data.type + '">' + typeLabel + '</span><span class="suggestion-title">' + escapeHtml(data.title) + '</span><span class="suggestion-status-label ' + data.status + '">' + statusLabel + '</span></div><div class="suggestion-summary">' + escapeHtml(data.summary) + '</div><div class="suggestion-actions"><button class="btn-details" title="Show the proposed file content">Details</button><button class="btn-approve" title="Write this agent file to .claude/agents/"' + (data.status !== 'pending' ? ' disabled' : '') + '>Approve</button><button class="btn-dismiss" title="Hide this suggestion"' + (data.status !== 'pending' ? ' disabled' : '') + '>Dismiss</button>' + clearBtn + '</div><div class="suggestion-detail"></div>';
       const detailEl = card.querySelector('.suggestion-detail');
       const detailBtn = card.querySelector('.btn-details');
       const approveBtn = card.querySelector('.btn-approve');
@@ -964,14 +1245,26 @@
       approveBtn.addEventListener('click', async () => {
         approveBtn.disabled = true; dismissBtn.disabled = true; approveBtn.textContent = 'Approving...';
         try {
-          const res = await fetch('/api/advisor/approve', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id:data.id}) });
+          const res = await fetch(apiUrl('/api/advisor/approve'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id:data.id}) });
           if (!res.ok) { const r = await res.json(); approveBtn.textContent = 'Error'; approveBtn.title = r.error; dismissBtn.disabled = false; }
         } catch { approveBtn.textContent = 'Error'; dismissBtn.disabled = false; }
       });
       dismissBtn.addEventListener('click', async () => {
         approveBtn.disabled = true; dismissBtn.disabled = true;
-        try { await fetch('/api/advisor/dismiss', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id:data.id}) }); } catch {}
+        try { await fetch(apiUrl('/api/advisor/dismiss'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id:data.id}) }); } catch {}
       });
+      const clearBtnEl = card.querySelector('.btn-clear');
+      if (clearBtnEl) {
+        clearBtnEl.addEventListener('click', async () => {
+          clearBtnEl.disabled = true; clearBtnEl.textContent = 'Clearing...';
+          try {
+            await fetch(apiUrl('/api/advisor/clear'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id:data.id}) });
+            card.remove();
+            suggestionMap.delete(data.id);
+            updateAdvisorBadge();
+          } catch { clearBtnEl.disabled = false; clearBtnEl.textContent = 'Clear'; }
+        });
+      }
       return card;
     }
 
@@ -991,10 +1284,11 @@
     document.getElementById('pgAdvisorBtn').addEventListener('click', () => { advisorToast.classList.add('show'); setTimeout(() => advisorToast.classList.remove('show'), 4000); });
 
     // Initialize with current state
-    updateSession(sessionData);
+    updateSession(get_sessionData());
     updateStats();
-    for (const key in agentRuntimeState) updateCard(key, agentRuntimeState[key]);
-    for (const entry of activityLogEntries) addLogEntry(entry);
+    const _ars = get_agentRuntimeState();
+    for (const key in _ars) updateCard(key, _ars[key]);
+    for (const entry of get_activityLogEntries()) addLogEntry(entry);
 
     // Timer for relative timestamps
     const timer = setInterval(() => {
@@ -1009,6 +1303,7 @@
         case 'activity': addLogEntry(msg.data); break;
         case 'advisor-suggestions': for (const s of msg.data) addOrUpdateSuggestion(s); if (msg.data.some(s=>s.status==='pending')) pgAdvisorPanel.classList.add('expanded'); break;
         case 'advisor-update': addOrUpdateSuggestion(msg.data); break;
+        case 'advisor-cleared': { const e = suggestionMap.get(msg.data.id); if (e) { e.el.remove(); suggestionMap.delete(msg.data.id); updateAdvisorBadge(); } break; }
         case 'agent-definition-changed': refreshSidebarAgents().then(updateStats); break;
       }
     };
@@ -1035,6 +1330,7 @@
 
     // Populate agent filter
     const agentSet = new Set();
+    const activityLogEntries = get_activityLogEntries();
     for (const e of activityLogEntries) agentSet.add(e.agent);
     for (const a of agentSet) { const o = document.createElement('option'); o.value = a; o.textContent = a; fAgent.appendChild(o); }
 
@@ -1086,7 +1382,7 @@
     if (entry.level === 'error') mc += ' log-error';
     if (entry.level === 'notification') mc += ' log-notification';
     if (entry.level === 'session') mc += ' log-session';
-    div.innerHTML = '<span class="log-time">' + formatTime(entry.time) + '</span><span class="log-agent">[' + escapeHtml(entry.agent) + ']</span><span class="' + mc + '">' + escapeHtml(entry.message) + '</span>';
+    div.innerHTML = '<span class="log-icon ' + logIconClass(entry) + '">' + logIcon(entry) + '</span><span class="log-time">' + formatTime(entry.time) + '</span><span class="log-agent">' + escapeHtml(entry.agent) + '</span><span class="' + mc + '">' + escapeHtml(entry.message) + '</span>';
     container.appendChild(div);
   }
 
@@ -1103,7 +1399,7 @@
 
     async function render() {
       try {
-        const res = await fetch('/api/agents');
+        const res = await fetch(apiUrl('/api/agents'));
         const defs = await res.json();
         if (defs.length === 0) {
           listEl.innerHTML = '<div class="empty-state"><h2>No agents defined</h2><p>Create your first agent to get started.</p><button class="btn btn-primary" id="alEmptyBtn">Create First Agent</button></div>';
@@ -1142,7 +1438,7 @@
     async function render() {
       let agent;
       try {
-        const res = await fetch('/api/agents/' + name);
+        const res = await fetch(apiUrl('/api/agents/' + name));
         if (!res.ok) { pageContent.innerHTML = '<div class="empty-state"><h2>Agent not found</h2><p>' + escapeHtml(name) + ' does not exist.</p></div>'; return; }
         agent = await res.json();
       } catch { pageContent.innerHTML = '<div class="empty-state"><p>Failed to load agent</p></div>'; return; }
@@ -1191,7 +1487,7 @@
         const confirmed = await showModal('Delete Agent', 'Delete agent "' + friendlyName(name) + '"? This will remove .claude/agents/' + name + '.md. This cannot be undone.', 'Delete');
         if (!confirmed) return;
         try {
-          const res = await fetch('/api/agents/' + name, { method: 'DELETE' });
+          const res = await fetch(apiUrl('/api/agents/' + name), { method: 'DELETE' });
           if (res.ok) { navigate('#/agents'); refreshSidebarAgents(); }
         } catch {}
       });
@@ -1207,12 +1503,20 @@
             <div class="stat-card"><div class="stat-card-label">Total Tool Calls</div><div class="stat-card-value">${m.totalToolCalls}</div></div>
             <div class="stat-card"><div class="stat-card-label">Total Errors</div><div class="stat-card-value" style="color:${m.totalErrors>0?'var(--status-error)':'var(--text-tertiary)'}">${m.totalErrors}</div></div>
           </div>
-          <h3 style="font-size:14px;font-weight:600;margin:16px 0 8px;color:var(--text-secondary)">Token Usage</h3>
-          <div style="font-size:13px;color:var(--text-secondary);margin-bottom:20px;font-family:var(--mono-font)">
-            Input: ${formatTokens(m.totalTokens.input)} &nbsp; Output: ${formatTokens(m.totalTokens.output)} &nbsp; Cache: ${formatTokens(m.totalTokens.cacheCreation + m.totalTokens.cacheRead)}
+          <div class="collapsible-header" id="adTokenToggle" onclick="this.classList.toggle('expanded')">
+            <h3 style="font-size:14px;font-weight:600;color:var(--text-secondary)">Token Usage</h3>
+            <span class="collapsible-arrow">&#9660;</span>
           </div>
-          <h3 style="font-size:14px;font-weight:600;margin:16px 0 8px;color:var(--text-secondary)">Tool Frequency</h3>
-          <div id="adToolFreq"></div>
+          <div class="collapsible-body" id="adTokenBody">
+            <div style="font-size:13px;color:var(--text-secondary);margin-bottom:20px;font-family:var(--mono-font)">
+              Input: ${formatTokens(m.totalTokens.input)} &nbsp; Output: ${formatTokens(m.totalTokens.output)} &nbsp; Cache: ${formatTokens(m.totalTokens.cacheCreation + m.totalTokens.cacheRead)}
+            </div>
+          </div>
+          <div class="collapsible-header" id="adToolFreqToggle" onclick="this.classList.toggle('expanded')">
+            <h3 style="font-size:14px;font-weight:600;color:var(--text-secondary)">Tool Frequency</h3>
+            <span class="collapsible-arrow">&#9660;</span>
+          </div>
+          <div class="collapsible-body" id="adToolFreqBody"><div id="adToolFreq"></div></div>
           <h3 style="font-size:14px;font-weight:600;margin:16px 0 8px;color:var(--text-secondary)">Recent Runs</h3>
           <div id="adRecentRuns"></div>
         `;
@@ -1255,7 +1559,7 @@
 
       // Runs Tab
       const tabRuns = document.getElementById('tabRuns');
-      const filtered = activityLogEntries.filter(e => e.agent === name);
+      const filtered = get_activityLogEntries().filter(e => e.agent === name);
       if (filtered.length) {
         tabRuns.innerHTML = '<div class="log-container" id="adRunsLog" style="max-height:none;min-height:200px;height:400px;"></div>';
         const rl = document.getElementById('adRunsLog');
@@ -1387,7 +1691,7 @@
 
     // Load existing data in edit mode
     if (isEdit) {
-      fetch('/api/agents/' + editName).then(r => r.json()).then(agent => {
+      fetch(apiUrl('/api/agents/' + editName)).then(r => r.json()).then(agent => {
         afName.value = agent.name;
         afDesc.value = agent.description || '';
         afModel.value = agent.model || '';
@@ -1408,7 +1712,7 @@
       const saveBtn = document.getElementById('afSave');
       saveBtn.disabled = true; saveBtn.textContent = 'Saving...';
       try {
-        const res = await fetch('/api/agents/' + name, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+        const res = await fetch(apiUrl('/api/agents/' + name), { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
         if (res.ok) { await refreshSidebarAgents(); navigate('#/agents/' + name); }
         else { const r = await res.json(); afError.textContent = r.error || 'Save failed'; afError.classList.add('visible'); saveBtn.disabled = false; saveBtn.textContent = isEdit ? 'Save Changes' : 'Create Agent'; }
       } catch { afError.textContent = 'Network error'; afError.classList.add('visible'); saveBtn.disabled = false; saveBtn.textContent = isEdit ? 'Save Changes' : 'Create Agent'; }
@@ -1427,43 +1731,111 @@
   // WebSocket + Polling
   // ============================================================
   function handleMessage(msg) {
-    // Update global state
-    if (msg.type === 'full-state') {
-      const { agents: ag, activityLog: log, session, suggestions } = msg.data;
-      if (session) { sessionData = session; sessionStartTime = session.startTime; }
-      for (const [key, data] of Object.entries(ag)) agentRuntimeState[key] = data;
-      for (const entry of log) {
-        if (!activityLogEntries.some(e => e.time === entry.time && e.agent === entry.agent && e.message === entry.message)) {
-          activityLogEntries.push(entry);
+    // Multi-project full state (sent on WS connect)
+    if (msg.type === 'full-state-multi') {
+      // Update projects list
+      if (msg.projectsList) {
+        projectsList = msg.projectsList;
+      }
+      // Populate per-project data
+      for (const proj of (msg.projects || [])) {
+        const pid = proj.id || proj.cwd;
+        const pd = getProjectData(pid);
+        if (proj.session) { pd.sessionData = proj.session; }
+        for (const [key, data] of Object.entries(proj.agents || {})) pd.agentRuntimeState[key] = data;
+        for (const entry of (proj.activityLog || [])) {
+          if (!pd.activityLogEntries.some(e => e.time === entry.time && e.agent === entry.agent && e.message === entry.message)) {
+            pd.activityLogEntries.push(entry);
+          }
+        }
+        while (pd.activityLogEntries.length > MAX_LOG) pd.activityLogEntries.shift();
+      }
+      // Auto-select first project if none selected or selected not in list
+      if (!activeProjectId || !projectsList.some(p => p.id === activeProjectId)) {
+        if (projectsList.length > 0) {
+          activeProjectId = projectsList[0].id;
+          localStorage.setItem('activeProject', activeProjectId);
         }
       }
-      while (activityLogEntries.length > MAX_LOG) activityLogEntries.shift();
-      // Forward to page handler (it will process full-state as individual updates)
+      renderProjectTabs();
+      refreshSidebarAgents();
+      // Forward active project's state to page handler
       if (pageUpdateHandler) {
-        for (const [key, data] of Object.entries(ag)) pageUpdateHandler({type:'agent-update', agent:key, data});
-        if (session) pageUpdateHandler({type:'session-update', data:session});
-        for (const entry of log) pageUpdateHandler({type:'activity', data:entry});
-        if (suggestions) for (const s of suggestions) pageUpdateHandler({type:'advisor-suggestions', data:[s]});
+        const pd = getActiveData();
+        for (const [key, data] of Object.entries(pd.agentRuntimeState)) pageUpdateHandler({type:'agent-update', agent:key, data});
+        if (pd.sessionData) pageUpdateHandler({type:'session-update', data:pd.sessionData});
+        for (const entry of pd.activityLogEntries) pageUpdateHandler({type:'activity', data:entry});
+        if (pd.sessionData) sessionStartTime = pd.sessionData.startTime;
+        // Forward suggestions
+        const activeProj = (msg.projects || []).find(p => (p.id || p.cwd) === activeProjectId);
+        if (activeProj?.suggestions) for (const s of activeProj.suggestions) pageUpdateHandler({type:'advisor-suggestions', data:[s]});
       }
       updateSidebarAgentDots();
       return;
     }
+
+    // Projects list update (new project added, etc.)
+    if (msg.type === 'projects-update') {
+      projectsList = msg.data || [];
+      // Auto-select if we had no project
+      if (!activeProjectId && projectsList.length > 0) {
+        activeProjectId = projectsList[0].id;
+        localStorage.setItem('activeProject', activeProjectId);
+        refreshSidebarAgents();
+        routeChanged();
+      }
+      renderProjectTabs();
+      return;
+    }
+
+    // All other messages are project-scoped via msg.projectId
+    const msgProjectId = msg.projectId || activeProjectId;
+
+    // Legacy full-state (from polling fallback)
+    if (msg.type === 'full-state') {
+      const pd = getProjectData(msgProjectId);
+      const { agents: ag, activityLog: log, session, suggestions } = msg.data;
+      if (session) { pd.sessionData = session; }
+      for (const [key, data] of Object.entries(ag || {})) pd.agentRuntimeState[key] = data;
+      for (const entry of (log || [])) {
+        if (!pd.activityLogEntries.some(e => e.time === entry.time && e.agent === entry.agent && e.message === entry.message)) {
+          pd.activityLogEntries.push(entry);
+        }
+      }
+      while (pd.activityLogEntries.length > MAX_LOG) pd.activityLogEntries.shift();
+      if (msgProjectId === activeProjectId) {
+        sessionStartTime = pd.sessionData?.startTime;
+        if (pageUpdateHandler) {
+          for (const [key, data] of Object.entries(ag || {})) pageUpdateHandler({type:'agent-update', agent:key, data});
+          if (session) pageUpdateHandler({type:'session-update', data:session});
+          for (const entry of (log || [])) pageUpdateHandler({type:'activity', data:entry});
+          if (suggestions) for (const s of suggestions) pageUpdateHandler({type:'advisor-suggestions', data:[s]});
+        }
+        updateSidebarAgentDots();
+      }
+      return;
+    }
+
+    // Project-scoped updates
+    const pd = getProjectData(msgProjectId);
+
     if (msg.type === 'agent-update') {
-      agentRuntimeState[msg.agent] = msg.data;
+      pd.agentRuntimeState[msg.agent] = msg.data;
       updateSidebarAgentDots();
     }
     if (msg.type === 'session-update') {
-      sessionData = msg.data;
-      sessionStartTime = msg.data.startTime;
+      pd.sessionData = msg.data;
+      if (msgProjectId === activeProjectId) sessionStartTime = msg.data.startTime;
     }
     if (msg.type === 'activity') {
-      activityLogEntries.push(msg.data);
-      while (activityLogEntries.length > MAX_LOG) activityLogEntries.shift();
+      pd.activityLogEntries.push(msg.data);
+      while (pd.activityLogEntries.length > MAX_LOG) pd.activityLogEntries.shift();
     }
     if (msg.type === 'agent-definition-changed') {
-      refreshSidebarAgents();
+      if (msgProjectId === activeProjectId) refreshSidebarAgents();
     }
-    if (pageUpdateHandler) pageUpdateHandler(msg);
+    // Only forward to page handler if this is the active project
+    if (msgProjectId === activeProjectId && pageUpdateHandler) pageUpdateHandler(msg);
   }
 
   function connectWS() {
@@ -1478,9 +1850,21 @@
   async function pollState() {
     if (wsConnected) return;
     try {
-      const res = await fetch('/api/state');
+      // Poll projects list first
+      const projRes = await fetch('/api/projects');
+      const projList = await projRes.json();
+      if (projList.length > 0) {
+        projectsList = projList;
+        if (!activeProjectId || !projectsList.some(p => p.id === activeProjectId)) {
+          activeProjectId = projectsList[0].id;
+          localStorage.setItem('activeProject', activeProjectId);
+        }
+        renderProjectTabs();
+      }
+      // Poll active project state
+      const res = await fetch(apiUrl('/api/state'));
       const state = await res.json();
-      handleMessage({ type: 'full-state', data: state });
+      handleMessage({ type: 'full-state', data: state, projectId: activeProjectId });
       if (!wsConnected) { connDot.classList.add('connected'); connDot.title = 'Polling'; }
     } catch {
       connDot.classList.remove('connected');

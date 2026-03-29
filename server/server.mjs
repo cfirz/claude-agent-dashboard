@@ -2,11 +2,12 @@
 // Agent Dashboard Server — zero dependencies, Node.js built-in only
 // Receives Claude Code hook events via HTTP POST, serves dashboard UI,
 // and pushes real-time updates to browsers via WebSocket.
+// Supports multiple projects (workspaces) — each project gets isolated state.
 
 import { createServer } from 'node:http';
 import { createHash, randomBytes } from 'node:crypto';
 import { readFile, writeFile, mkdir, rename, readdir, unlink } from 'node:fs/promises';
-import { join, dirname, resolve, normalize } from 'node:path';
+import { join, dirname, resolve, normalize, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { homedir } from 'node:os';
 import { existsSync } from 'node:fs';
@@ -14,139 +15,288 @@ import { existsSync } from 'node:fs';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = parseInt(process.env.PORT || '8099', 10);
 const WS_MAGIC = '258EAFA5-E914-47DA-95CA-5AB9A3F8D85E';
-const PROJECT_ROOT = resolve(__dirname, '..');
-const ADVISOR_DIR = join(PROJECT_ROOT, '.claude', 'advisor-data');
-const METRICS_PATH = join(ADVISOR_DIR, 'metrics.json');
-const SUGGESTIONS_PATH = join(ADVISOR_DIR, 'suggestions.json');
-const AGENTS_DIR = join(PROJECT_ROOT, '.claude', 'agents');
-
-// --- State ---
+const PLUGIN_ROOT = resolve(__dirname, '..');
+const PLUGIN_ADVISOR_DIR = join(PLUGIN_ROOT, '.claude', 'advisor-data');
+const PROJECTS_REGISTRY_PATH = join(PLUGIN_ADVISOR_DIR, 'projects.json');
 
 const ORCHESTRATOR = 'orchestrator';
-const agents = new Map(); // agentKey -> { agentType, status, activity, lastSeen, toolCount, agentId, ... }
-const activityLog = [];   // circular buffer, max 100
 const MAX_LOG = 100;
+const MAX_RUNS_PER_AGENT = 20;
+
+// --- Multi-Project State ---
+
+const projects = new Map();          // normalizedCwd -> ProjectState
+const sessionToProject = new Map();  // sessionId -> normalizedCwd
 const wsClients = new Set();
 
-// Maps agent_type -> most recent agent_id (for PreToolUse/PostToolUse which don't always have agent_id)
-const activeAgentIds = new Map();
-
-// --- Advisor: Metrics & Suggestions ---
-
-const MAX_RUNS_PER_AGENT = 20;
-let metrics = { version: 1, lastUpdated: null, agentTypes: {}, orchestratorStats: { totalTurns: 0, toolFrequency: {}, agentTypesSpawned: [] } };
-const suggestions = new Map(); // id -> suggestion object
-let metricsSaveTimer = null;
-let suggestionsSaveTimer = null;
-// Track per-agent start times for duration calculation
-const agentStartTimes = new Map(); // agentKey -> timestamp
-
-async function ensureAdvisorDir() {
-  if (!existsSync(ADVISOR_DIR)) await mkdir(ADVISOR_DIR, { recursive: true });
+function normalizeCwd(cwd) {
+  if (!cwd) return '';
+  let normalized = cwd.replace(/\\/g, '/').replace(/\/+$/, '');
+  // Convert Git Bash paths (/e/foo) to Windows-style (E:/foo)
+  const gitBashMatch = normalized.match(/^\/([a-zA-Z])\/(.*)/);
+  if (gitBashMatch) {
+    normalized = gitBashMatch[1].toUpperCase() + ':/' + gitBashMatch[2];
+  }
+  return normalized;
 }
 
-async function loadMetrics() {
-  try {
-    const raw = await readFile(METRICS_PATH, 'utf8');
-    metrics = JSON.parse(raw);
-  } catch { /* file missing or corrupt — use defaults */ }
-}
+// --- ProjectState Class ---
 
-function saveMetricsDebounced() {
-  if (metricsSaveTimer) clearTimeout(metricsSaveTimer);
-  metricsSaveTimer = setTimeout(async () => {
-    try {
-      await ensureAdvisorDir();
-      metrics.lastUpdated = new Date().toISOString();
-      await writeFile(METRICS_PATH, JSON.stringify(metrics, null, 2));
-    } catch (e) { console.error('Failed to save metrics:', e.message); }
-  }, 500);
-}
+class ProjectState {
+  constructor(cwd) {
+    this.cwd = cwd;
+    this.name = basename(cwd) || cwd;
+    this.lastSeen = Date.now();
 
-async function loadSuggestions() {
-  try {
-    const raw = await readFile(SUGGESTIONS_PATH, 'utf8');
-    const arr = JSON.parse(raw);
-    for (const s of arr) suggestions.set(s.id, s);
-  } catch { /* file missing or corrupt */ }
-}
+    // Per-project directories
+    this.advisorDir = join(cwd.replace(/\//g, (process.platform === 'win32' ? '\\' : '/')), '.claude', 'advisor-data');
+    this.metricsPath = join(this.advisorDir, 'metrics.json');
+    this.suggestionsPath = join(this.advisorDir, 'suggestions.json');
+    this.agentsDir = join(cwd.replace(/\//g, (process.platform === 'win32' ? '\\' : '/')), '.claude', 'agents');
 
-function saveSuggestionsDebounced() {
-  if (suggestionsSaveTimer) clearTimeout(suggestionsSaveTimer);
-  suggestionsSaveTimer = setTimeout(async () => {
-    try {
-      await ensureAdvisorDir();
-      const arr = [...suggestions.values()];
-      await writeFile(SUGGESTIONS_PATH, JSON.stringify(arr, null, 2));
-    } catch (e) { console.error('Failed to save suggestions:', e.message); }
-  }, 500);
-}
+    // Runtime state
+    this.agents = new Map();
+    this.activityLog = [];
+    this.activeAgentIds = new Map();
+    this.agentStartTimes = new Map();
 
-function recordAgentRun(agentType, agentData, durationMs) {
-  if (!metrics.agentTypes[agentType]) {
-    metrics.agentTypes[agentType] = {
-      totalRuns: 0, totalToolCalls: 0, totalErrors: 0,
+    this.sessionState = {
+      sessionId: null,
+      startTime: null,
       totalTokens: { input: 0, output: 0, cacheCreation: 0, cacheRead: 0 },
-      toolFrequency: {}, runs: [],
+      totalErrors: 0,
+      agentCount: 0,
     };
+
+    // Metrics & suggestions
+    this.metrics = {
+      version: 1, lastUpdated: null, agentTypes: {},
+      orchestratorStats: { totalTurns: 0, toolFrequency: {}, agentTypesSpawned: [] },
+    };
+    this.suggestions = new Map();
+    this._metricsSaveTimer = null;
+    this._suggestionsSaveTimer = null;
   }
-  const m = metrics.agentTypes[agentType];
-  m.totalRuns++;
-  m.totalToolCalls += agentData.toolCount || 0;
-  m.totalErrors += agentData.errors || 0;
-  const t = agentData.tokens || {};
-  m.totalTokens.input += t.input || 0;
-  m.totalTokens.output += t.output || 0;
-  m.totalTokens.cacheCreation += t.cacheCreation || 0;
-  m.totalTokens.cacheRead += t.cacheRead || 0;
-  // Tool frequency
-  for (const tool of (agentData.tools || [])) {
-    m.toolFrequency[tool] = (m.toolFrequency[tool] || 0) + 1;
+
+  // --- Persistence ---
+
+  async ensureAdvisorDir() {
+    if (!existsSync(this.advisorDir)) await mkdir(this.advisorDir, { recursive: true });
   }
-  // Run record
-  m.runs.push({
-    timestamp: new Date().toISOString(),
-    toolCount: agentData.toolCount || 0,
-    errors: agentData.errors || 0,
-    tokens: { ...t },
-    tools: [...(agentData.tools || [])],
-    skills: [...(agentData.skills || [])],
-    durationMs: durationMs || 0,
-  });
-  if (m.runs.length > MAX_RUNS_PER_AGENT) m.runs.shift();
-  // Track in orchestrator stats
-  const os = metrics.orchestratorStats;
-  if (!os.agentTypesSpawned.includes(agentType)) {
-    os.agentTypesSpawned.push(agentType);
+
+  async loadMetrics() {
+    try {
+      const raw = await readFile(this.metricsPath, 'utf8');
+      this.metrics = JSON.parse(raw);
+    } catch { /* file missing or corrupt — use defaults */ }
   }
-  saveMetricsDebounced();
+
+  saveMetricsDebounced() {
+    if (this._metricsSaveTimer) clearTimeout(this._metricsSaveTimer);
+    this._metricsSaveTimer = setTimeout(async () => {
+      try {
+        await this.ensureAdvisorDir();
+        this.metrics.lastUpdated = new Date().toISOString();
+        await writeFile(this.metricsPath, JSON.stringify(this.metrics, null, 2));
+      } catch (e) { console.error(`Failed to save metrics for ${this.name}:`, e.message); }
+    }, 500);
+  }
+
+  async loadSuggestions() {
+    try {
+      const raw = await readFile(this.suggestionsPath, 'utf8');
+      const arr = JSON.parse(raw);
+      for (const s of arr) this.suggestions.set(s.id, s);
+    } catch { /* file missing or corrupt */ }
+  }
+
+  saveSuggestionsDebounced() {
+    if (this._suggestionsSaveTimer) clearTimeout(this._suggestionsSaveTimer);
+    this._suggestionsSaveTimer = setTimeout(async () => {
+      try {
+        await this.ensureAdvisorDir();
+        const arr = [...this.suggestions.values()];
+        await writeFile(this.suggestionsPath, JSON.stringify(arr, null, 2));
+      } catch (e) { console.error(`Failed to save suggestions for ${this.name}:`, e.message); }
+    }, 500);
+  }
+
+  // --- Agent State ---
+
+  agentKey(agentType, agentId) {
+    if (agentType === ORCHESTRATOR || !agentId) return agentType || ORCHESTRATOR;
+    return `${agentType}::${agentId}`;
+  }
+
+  getAgentState(key, agentType) {
+    if (!this.agents.has(key)) {
+      this.agents.set(key, {
+        agentType: agentType || key,
+        status: 'idle',
+        activity: '',
+        lastSeen: null,
+        toolCount: 0,
+        agentId: null,
+        stale: false,
+        skills: [],
+        tools: [],
+        errors: 0,
+        lastError: null,
+        tokens: { input: 0, output: 0, cacheCreation: 0, cacheRead: 0 },
+      });
+    }
+    return this.agents.get(key);
+  }
+
+  resolveToolAgentKey(body) {
+    const agentType = body.agent_type || ORCHESTRATOR;
+    const agentId = body.agent_id || this.activeAgentIds.get(agentType) || null;
+    return { key: this.agentKey(agentType, agentId), agentType };
+  }
+
+  fullState() {
+    const obj = {};
+    for (const [key, val] of this.agents) obj[key] = { ...val };
+    const sugg = [...this.suggestions.values()];
+    return { agents: obj, activityLog: this.activityLog.slice(), session: { ...this.sessionState }, suggestions: sugg };
+  }
+
+  pushLog(displayName, message, level = 'info') {
+    const entry = { time: Date.now(), agent: displayName, message, level };
+    this.activityLog.push(entry);
+    if (this.activityLog.length > MAX_LOG) this.activityLog.shift();
+    this.broadcast({ type: 'activity', data: entry });
+  }
+
+  broadcast(msg) {
+    const frame = encodeWSFrame(JSON.stringify({ ...msg, projectId: this.cwd }));
+    for (const socket of wsClients) {
+      try { socket.write(frame); } catch { wsClients.delete(socket); }
+    }
+  }
+
+  // --- Metrics ---
+
+  recordAgentRun(agentType, agentData, durationMs) {
+    if (!this.metrics.agentTypes[agentType]) {
+      this.metrics.agentTypes[agentType] = {
+        totalRuns: 0, totalToolCalls: 0, totalErrors: 0,
+        totalTokens: { input: 0, output: 0, cacheCreation: 0, cacheRead: 0 },
+        toolFrequency: {}, runs: [],
+      };
+    }
+    const m = this.metrics.agentTypes[agentType];
+    m.totalRuns++;
+    m.totalToolCalls += agentData.toolCount || 0;
+    m.totalErrors += agentData.errors || 0;
+    const t = agentData.tokens || {};
+    m.totalTokens.input += t.input || 0;
+    m.totalTokens.output += t.output || 0;
+    m.totalTokens.cacheCreation += t.cacheCreation || 0;
+    m.totalTokens.cacheRead += t.cacheRead || 0;
+    for (const tool of (agentData.tools || [])) {
+      m.toolFrequency[tool] = (m.toolFrequency[tool] || 0) + 1;
+    }
+    m.runs.push({
+      timestamp: new Date().toISOString(),
+      toolCount: agentData.toolCount || 0,
+      errors: agentData.errors || 0,
+      tokens: { ...t },
+      tools: [...(agentData.tools || [])],
+      skills: [...(agentData.skills || [])],
+      durationMs: durationMs || 0,
+    });
+    if (m.runs.length > MAX_RUNS_PER_AGENT) m.runs.shift();
+    const os = this.metrics.orchestratorStats;
+    if (!os.agentTypesSpawned.includes(agentType)) {
+      os.agentTypesSpawned.push(agentType);
+    }
+    this.saveMetricsDebounced();
+  }
+
+  trackOrchestratorTool(toolName) {
+    const os = this.metrics.orchestratorStats;
+    os.toolFrequency[toolName] = (os.toolFrequency[toolName] || 0) + 1;
+  }
+
+  // --- Agent file helpers ---
+
+  validateAgentPath(filePath) {
+    const resolved = resolve(filePath);
+    const normalizedAgentsDir = normalize(this.agentsDir);
+    return resolved.startsWith(normalizedAgentsDir) && resolved.endsWith('.md');
+  }
+
+  async writeAgentFile(suggestion) {
+    const filePath = suggestion.proposedFile?.path;
+    if (!filePath) throw new Error('No file path in suggestion');
+    // Resolve relative to project cwd
+    const fullPath = resolve(this.cwd.replace(/\//g, (process.platform === 'win32' ? '\\' : '/')), filePath);
+    if (!this.validateAgentPath(fullPath)) throw new Error('Invalid path: must be within .claude/agents/ and end with .md');
+    await mkdir(dirname(fullPath), { recursive: true });
+    const tmpPath = fullPath + '.tmp.' + randomBytes(4).toString('hex');
+    await writeFile(tmpPath, suggestion.proposedFile.content);
+    await rename(tmpPath, fullPath);
+    return fullPath;
+  }
+
+  async listAgentDefinitions() {
+    try {
+      const files = await readdir(this.agentsDir);
+      const defs = [];
+      for (const file of files) {
+        if (!file.endsWith('.md')) continue;
+        try {
+          const content = await readFile(join(this.agentsDir, file), 'utf8');
+          const parsed = parseAgentFile(content);
+          const name = parsed.frontmatter.name || file.replace(/\.md$/, '');
+          let liveStatus = 'idle';
+          for (const [, agent] of this.agents) {
+            if (agent.agentType === name && (agent.status === 'working' || agent.status === 'completed')) {
+              liveStatus = agent.status;
+              break;
+            }
+          }
+          defs.push({
+            fileName: file,
+            name,
+            description: parsed.frontmatter.description || '',
+            tools: parsed.frontmatter.tools || [],
+            model: parsed.frontmatter.model || '',
+            body: parsed.body,
+            liveStatus,
+          });
+        } catch { /* skip unreadable files */ }
+      }
+      defs.sort((a, b) => a.name.localeCompare(b.name));
+      return defs;
+    } catch { return []; }
+  }
+
+  // --- Stale detection ---
+
+  checkStaleAgents() {
+    const now = Date.now();
+    for (const [key, agent] of this.agents) {
+      if (agent.status === 'working' && agent.lastSeen) {
+        const age = now - agent.lastSeen;
+        if (age > 90_000) {
+          agent.status = 'idle';
+          agent.activity = '';
+          agent.skills = [];
+          agent.tools = [];
+          this.broadcast({ type: 'agent-update', agent: key, data: { ...agent } });
+          this.pushLog(agent.agentType || key, 'No events for 90s — marked idle');
+        } else if (age > 30_000 && !agent.stale) {
+          agent.stale = true;
+          this.broadcast({ type: 'agent-update', agent: key, data: { ...agent } });
+        }
+      }
+    }
+  }
 }
 
-function trackOrchestratorTool(toolName) {
-  const os = metrics.orchestratorStats;
-  os.toolFrequency[toolName] = (os.toolFrequency[toolName] || 0) + 1;
-}
-
-function validateAgentPath(filePath) {
-  const resolved = resolve(PROJECT_ROOT, filePath);
-  const normalizedAgentsDir = normalize(AGENTS_DIR);
-  return resolved.startsWith(normalizedAgentsDir) && resolved.endsWith('.md');
-}
-
-async function writeAgentFile(suggestion) {
-  const filePath = suggestion.proposedFile?.path;
-  if (!filePath) throw new Error('No file path in suggestion');
-  if (!validateAgentPath(filePath)) throw new Error('Invalid path: must be within .claude/agents/ and end with .md');
-  const fullPath = resolve(PROJECT_ROOT, filePath);
-  await mkdir(dirname(fullPath), { recursive: true });
-  // Atomic write: write to tmp then rename
-  const tmpPath = fullPath + '.tmp.' + randomBytes(4).toString('hex');
-  await writeFile(tmpPath, suggestion.proposedFile.content);
-  await rename(tmpPath, fullPath);
-  return fullPath;
-}
-
-// --- Agent Definition CRUD helpers ---
+// --- Shared parsers (not project-scoped) ---
 
 function parseAgentFile(content) {
   const result = { frontmatter: { name: '', description: '', tools: [], model: '' }, body: '' };
@@ -184,99 +334,116 @@ function buildAgentFileContent(data) {
   return fm.join('\n') + (data.body || '');
 }
 
-async function listAgentDefinitions() {
+// --- Project Registry ---
+
+async function ensurePluginAdvisorDir() {
+  if (!existsSync(PLUGIN_ADVISOR_DIR)) await mkdir(PLUGIN_ADVISOR_DIR, { recursive: true });
+}
+
+async function loadProjectsRegistry() {
   try {
-    const files = await readdir(AGENTS_DIR);
-    const defs = [];
-    for (const file of files) {
-      if (!file.endsWith('.md')) continue;
-      try {
-        const content = await readFile(join(AGENTS_DIR, file), 'utf8');
-        const parsed = parseAgentFile(content);
-        const name = parsed.frontmatter.name || file.replace(/\.md$/, '');
-        // Merge with live runtime status
-        let liveStatus = 'idle';
-        for (const [, agent] of agents) {
-          if (agent.agentType === name && (agent.status === 'working' || agent.status === 'completed')) {
-            liveStatus = agent.status;
-            break;
-          }
-        }
-        defs.push({
-          fileName: file,
-          name,
-          description: parsed.frontmatter.description || '',
-          tools: parsed.frontmatter.tools || [],
-          model: parsed.frontmatter.model || '',
-          body: parsed.body,
-          liveStatus,
-        });
-      } catch { /* skip unreadable files */ }
+    const raw = await readFile(PROJECTS_REGISTRY_PATH, 'utf8');
+    const arr = JSON.parse(raw);
+    for (const entry of arr) {
+      const cwd = normalizeCwd(entry.cwd);
+      if (cwd && !projects.has(cwd)) {
+        const proj = new ProjectState(cwd);
+        proj.lastSeen = entry.lastSeen || 0;
+        if (entry.name) proj.name = entry.name;
+        projects.set(cwd, proj);
+      }
     }
-    defs.sort((a, b) => a.name.localeCompare(b.name));
-    return defs;
-  } catch { return []; }
+  } catch { /* file missing — start fresh */ }
 }
 
-const sessionState = {
-  sessionId: null,
-  startTime: null,
-  totalTokens: { input: 0, output: 0, cacheCreation: 0, cacheRead: 0 },
-  totalErrors: 0,
-  agentCount: 0,
-};
-
-// Each agent instance gets a unique key based on agent_id.
-// The orchestrator always uses the key "orchestrator".
-function agentKey(agentType, agentId) {
-  if (agentType === ORCHESTRATOR || !agentId) return agentType || ORCHESTRATOR;
-  return `${agentType}::${agentId}`;
+async function saveProjectsRegistry() {
+  try {
+    await ensurePluginAdvisorDir();
+    const arr = [];
+    for (const [cwd, proj] of projects) {
+      arr.push({ cwd, name: proj.name, lastSeen: proj.lastSeen });
+    }
+    await writeFile(PROJECTS_REGISTRY_PATH, JSON.stringify(arr, null, 2));
+  } catch (e) { console.error('Failed to save projects registry:', e.message); }
 }
 
-function getAgentState(key, agentType) {
-  if (!agents.has(key)) {
-    agents.set(key, {
-      agentType: agentType || key, // display name
-      status: 'idle',
-      activity: '',
-      lastSeen: null,
-      toolCount: 0,
-      agentId: null,
-      stale: false,
-      skills: [],
-      tools: [],
-      errors: 0,
-      lastError: null,
-      tokens: { input: 0, output: 0, cacheCreation: 0, cacheRead: 0 },
-    });
+async function getOrCreateProject(cwd) {
+  const normalized = normalizeCwd(cwd);
+  if (!normalized) return null;
+  if (projects.has(normalized)) {
+    const proj = projects.get(normalized);
+    proj.lastSeen = Date.now();
+    return proj;
   }
-  return agents.get(key);
+  const proj = new ProjectState(normalized);
+  projects.set(normalized, proj);
+  await proj.ensureAdvisorDir();
+  await proj.loadMetrics();
+  await proj.loadSuggestions();
+  await saveProjectsRegistry();
+  // Notify UI of new project
+  broadcastGlobal({ type: 'projects-update', data: getProjectsList() });
+  return proj;
 }
 
-function fullState() {
-  const obj = {};
-  for (const [key, val] of agents) obj[key] = { ...val };
-  const sugg = [...suggestions.values()];
-  return { agents: obj, activityLog: activityLog.slice(), session: { ...sessionState }, suggestions: sugg };
+function resolveProject(body) {
+  // Try session_id mapping first
+  if (body.session_id && sessionToProject.has(body.session_id)) {
+    const cwd = sessionToProject.get(body.session_id);
+    return projects.get(cwd) || null;
+  }
+  // Try cwd in body
+  if (body.cwd) {
+    const normalized = normalizeCwd(body.cwd);
+    return projects.get(normalized) || null;
+  }
+  // Fallback: if only one project, use it
+  if (projects.size === 1) {
+    return projects.values().next().value;
+  }
+  return null;
 }
 
-function pushLog(displayName, message, level = 'info') {
-  const entry = { time: Date.now(), agent: displayName, message, level };
-  activityLog.push(entry);
-  if (activityLog.length > MAX_LOG) activityLog.shift();
-  broadcast({ type: 'activity', data: entry });
+function getProjectsList() {
+  const list = [];
+  for (const [cwd, proj] of projects) {
+    let hasActiveSession = false;
+    for (const [, pCwd] of sessionToProject) {
+      if (pCwd === cwd) { hasActiveSession = true; break; }
+    }
+    let hasActiveAgents = false;
+    for (const [, agent] of proj.agents) {
+      if (agent.status === 'working') { hasActiveAgents = true; break; }
+    }
+    list.push({ id: cwd, name: proj.name, cwd, lastSeen: proj.lastSeen, hasActiveSession, hasActiveAgents });
+  }
+  return list;
 }
 
-// Resolve the agent key for tool-use events.
-// These events have agent_type but may not have agent_id.
-// Use the activeAgentIds map to find the current instance.
-function resolveToolAgentKey(body) {
-  const agentType = body.agent_type || ORCHESTRATOR;
-  const agentId = body.agent_id || activeAgentIds.get(agentType) || null;
-  return { key: agentKey(agentType, agentId), agentType };
+// --- Shared Helper Functions ---
+
+function shortPath(filePath) {
+  if (!filePath) return 'file';
+  const normalized = filePath.replace(/\\/g, '/');
+  const stripped = normalized
+    .replace(/^.*?\/RunnerGame\//i, '')
+    .replace(/RunnerGameClient\//g, 'Client/')
+    .replace(/RunnerGameServer\//g, 'Server/')
+    .replace(/Assets\/_Project\//g, '');
+  const parts = stripped.split('/');
+  return parts.length > 3 ? '...' + parts.slice(-3).join('/') : stripped;
 }
 
-// --- Activity Description Parser ---
+function trunc(str, max) {
+  if (!str) return '';
+  return str.length > max ? str.slice(0, max) + '...' : str;
+}
+
+function formatTokenCount(n) {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return String(n);
+}
 
 function describeActivity(toolName, toolInput) {
   if (!toolName) return '';
@@ -334,30 +501,7 @@ function describeActivity(toolName, toolInput) {
   return `Using ${toolName}`;
 }
 
-function shortPath(filePath) {
-  if (!filePath) return 'file';
-  const normalized = filePath.replace(/\\/g, '/');
-  const stripped = normalized
-    .replace(/^.*?\/RunnerGame\//i, '')
-    .replace(/RunnerGameClient\//g, 'Client/')
-    .replace(/RunnerGameServer\//g, 'Server/')
-    .replace(/Assets\/_Project\//g, '');
-  const parts = stripped.split('/');
-  return parts.length > 3 ? '...' + parts.slice(-3).join('/') : stripped;
-}
-
-function trunc(str, max) {
-  if (!str) return '';
-  return str.length > max ? str.slice(0, max) + '...' : str;
-}
-
 // --- Token Parsing ---
-
-function formatTokenCount(n) {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
-  return String(n);
-}
 
 async function parseTranscriptTokens(filePath) {
   const tokens = { input: 0, output: 0, cacheCreation: 0, cacheRead: 0 };
@@ -383,24 +527,22 @@ async function parseTranscriptTokens(filePath) {
 
 function buildTranscriptPath(sessionId, agentId, cwd) {
   if (!sessionId || !agentId) return null;
-  // Project slug is derived from cwd: replace path separators with dashes
   const cwdNorm = (cwd || '').replace(/\\/g, '/').replace(/\/$/, '');
   const slug = cwdNorm.replace(/[/:]/g, '-').replace(/^-+/, '');
   return join(homedir(), '.claude', 'projects', slug, sessionId, 'subagents', `agent-a${agentId}.jsonl`);
 }
 
-// --- Hook Handlers ---
+// --- Hook Handlers (project-scoped) ---
 
-function handleSubagentStart(body) {
+function handleSubagentStart(proj, body) {
   const agentType = body.agent_type;
   if (!agentType) return;
   const agentId = body.agent_id || null;
-  const key = agentKey(agentType, agentId);
+  const key = proj.agentKey(agentType, agentId);
 
-  // Track the active agent_id for this agent_type (for tool events that lack agent_id)
-  if (agentId) activeAgentIds.set(agentType, agentId);
+  if (agentId) proj.activeAgentIds.set(agentType, agentId);
 
-  const agent = getAgentState(key, agentType);
+  const agent = proj.getAgentState(key, agentType);
   agent.agentType = agentType;
   agent.status = 'working';
   agent.activity = 'Starting up...';
@@ -414,70 +556,64 @@ function handleSubagentStart(body) {
   agent.lastError = null;
   agent.tokens = { input: 0, output: 0, cacheCreation: 0, cacheRead: 0 };
 
-  if (body.session_id && !sessionState.sessionId) {
-    sessionState.sessionId = body.session_id;
+  if (body.session_id && !proj.sessionState.sessionId) {
+    proj.sessionState.sessionId = body.session_id;
   }
-  sessionState.agentCount++;
+  proj.sessionState.agentCount++;
 
-  broadcast({ type: 'agent-update', agent: key, data: { ...agent } });
-  broadcast({ type: 'session-update', data: { ...sessionState } });
+  proj.broadcast({ type: 'agent-update', agent: key, data: { ...agent } });
+  proj.broadcast({ type: 'session-update', data: { ...proj.sessionState } });
 
-  // Track start time for duration calculation
-  agentStartTimes.set(key, Date.now());
+  proj.agentStartTimes.set(key, Date.now());
 
-  // Include short agent_id in log for disambiguation
   const idSuffix = agentId ? ` (${agentId.slice(-6)})` : '';
-  pushLog(agentType, `Started${idSuffix}`);
+  proj.pushLog(agentType, `Started${idSuffix}`);
 }
 
-async function handleSubagentStop(body) {
+async function handleSubagentStop(proj, body) {
   const agentType = body.agent_type;
   if (!agentType) return;
-  const agentId = body.agent_id || activeAgentIds.get(agentType) || null;
-  const key = agentKey(agentType, agentId);
-  const agent = getAgentState(key, agentType);
+  const agentId = body.agent_id || proj.activeAgentIds.get(agentType) || null;
+  const key = proj.agentKey(agentType, agentId);
+  const agent = proj.getAgentState(key, agentType);
   agent.status = 'completed';
   agent.activity = 'Finished';
   agent.lastSeen = Date.now();
 
-  // Parse transcript for token usage
   let transcriptPath = body.agent_transcript_path || null;
   if (!transcriptPath) {
-    transcriptPath = buildTranscriptPath(sessionState.sessionId || body.session_id, agent.agentId, body.cwd);
+    transcriptPath = buildTranscriptPath(proj.sessionState.sessionId || body.session_id, agent.agentId, body.cwd || proj.cwd);
   }
   if (transcriptPath) {
     const tokens = await parseTranscriptTokens(transcriptPath);
     agent.tokens = tokens;
     const totalIn = tokens.input + tokens.cacheCreation + tokens.cacheRead;
     const totalOut = tokens.output;
-    sessionState.totalTokens.input += tokens.input;
-    sessionState.totalTokens.output += tokens.output;
-    sessionState.totalTokens.cacheCreation += tokens.cacheCreation;
-    sessionState.totalTokens.cacheRead += tokens.cacheRead;
-    broadcast({ type: 'session-update', data: { ...sessionState } });
+    proj.sessionState.totalTokens.input += tokens.input;
+    proj.sessionState.totalTokens.output += tokens.output;
+    proj.sessionState.totalTokens.cacheCreation += tokens.cacheCreation;
+    proj.sessionState.totalTokens.cacheRead += tokens.cacheRead;
+    proj.broadcast({ type: 'session-update', data: { ...proj.sessionState } });
     if (totalIn > 0 || totalOut > 0) {
-      pushLog(agentType, `Tokens: ${formatTokenCount(totalIn)} in / ${formatTokenCount(totalOut)} out`);
+      proj.pushLog(agentType, `Tokens: ${formatTokenCount(totalIn)} in / ${formatTokenCount(totalOut)} out`);
     }
   }
 
-  broadcast({ type: 'agent-update', agent: key, data: { ...agent } });
+  proj.broadcast({ type: 'agent-update', agent: key, data: { ...agent } });
 
-  // Record metrics for advisor
-  const startTime = agentStartTimes.get(key);
+  const startTime = proj.agentStartTimes.get(key);
   const durationMs = startTime ? Date.now() - startTime : 0;
-  agentStartTimes.delete(key);
-  recordAgentRun(agentType, agent, durationMs);
+  proj.agentStartTimes.delete(key);
+  proj.recordAgentRun(agentType, agent, durationMs);
 
   const skillsSuffix = agent.skills.length ? `, skills: ${agent.skills.join(', ')}` : '';
   const idSuffix = agent.agentId ? ` (${agent.agentId.slice(-6)})` : '';
-  pushLog(agentType, `Completed${idSuffix} (${agent.toolCount} tools used${skillsSuffix})`);
+  proj.pushLog(agentType, `Completed${idSuffix} (${agent.toolCount} tools used${skillsSuffix})`);
 
-  // Clear the activeAgentIds mapping if this was the active one
-  if (agentId && activeAgentIds.get(agentType) === agentId) {
-    activeAgentIds.delete(agentType);
+  if (agentId && proj.activeAgentIds.get(agentType) === agentId) {
+    proj.activeAgentIds.delete(agentType);
   }
 
-  // Auto-transition to idle after 30s
   const capturedKey = key;
   setTimeout(() => {
     if (agent.status === 'completed') {
@@ -485,14 +621,14 @@ async function handleSubagentStop(body) {
       agent.activity = '';
       agent.skills = [];
       agent.tools = [];
-      broadcast({ type: 'agent-update', agent: capturedKey, data: { ...agent } });
+      proj.broadcast({ type: 'agent-update', agent: capturedKey, data: { ...agent } });
     }
   }, 30_000);
 }
 
-function handlePreToolUse(body) {
-  const { key, agentType } = resolveToolAgentKey(body);
-  const agent = getAgentState(key, agentType);
+function handlePreToolUse(proj, body) {
+  const { key, agentType } = proj.resolveToolAgentKey(body);
+  const agent = proj.getAgentState(key, agentType);
   const toolName = body.tool_name || '';
   let toolInput = body.tool_input;
   if (typeof toolInput === 'string') {
@@ -512,68 +648,77 @@ function handlePreToolUse(body) {
   }
   agent.stale = false;
   if (agent.status !== 'working') agent.status = 'working';
-  broadcast({ type: 'agent-update', agent: key, data: { ...agent } });
-  pushLog(agentType, activity);
-  // Track orchestrator-level tool frequency for advisor
-  if (toolName) trackOrchestratorTool(toolName);
+  proj.broadcast({ type: 'agent-update', agent: key, data: { ...agent } });
+  proj.pushLog(agentType, activity);
+  if (toolName) proj.trackOrchestratorTool(toolName);
 }
 
-function handlePostToolUse(body) {
-  const { key } = resolveToolAgentKey(body);
-  const agent = agents.get(key);
+function handlePostToolUse(proj, body) {
+  const { key } = proj.resolveToolAgentKey(body);
+  const agent = proj.agents.get(key);
   if (agent) {
     agent.lastSeen = Date.now();
   }
 }
 
-function handlePostToolUseFailure(body) {
-  const { key, agentType } = resolveToolAgentKey(body);
-  const agent = getAgentState(key, agentType);
+function handlePostToolUseFailure(proj, body) {
+  const { key, agentType } = proj.resolveToolAgentKey(body);
+  const agent = proj.getAgentState(key, agentType);
   agent.lastSeen = Date.now();
   agent.errors++;
   const toolName = body.tool_name || 'unknown';
   const errorMsg = body.error || body.tool_result || 'Unknown error';
   agent.lastError = { tool: toolName, message: trunc(String(errorMsg), 200), time: Date.now() };
-  sessionState.totalErrors++;
-  broadcast({ type: 'agent-update', agent: key, data: { ...agent } });
-  broadcast({ type: 'session-update', data: { ...sessionState } });
-  pushLog(agentType, `FAILED: ${toolName} — ${trunc(String(errorMsg), 100)}`, 'error');
+  proj.sessionState.totalErrors++;
+  proj.broadcast({ type: 'agent-update', agent: key, data: { ...agent } });
+  proj.broadcast({ type: 'session-update', data: { ...proj.sessionState } });
+  proj.pushLog(agentType, `FAILED: ${toolName} — ${trunc(String(errorMsg), 100)}`, 'error');
 }
 
-function handleStop(body) {
-  const agent = getAgentState(ORCHESTRATOR, ORCHESTRATOR);
+function handleStop(proj, body) {
+  const agent = proj.getAgentState(ORCHESTRATOR, ORCHESTRATOR);
   agent.status = 'completed';
   agent.activity = 'Turn finished';
   agent.lastSeen = Date.now();
-  broadcast({ type: 'agent-update', agent: ORCHESTRATOR, data: { ...agent } });
+  proj.broadcast({ type: 'agent-update', agent: ORCHESTRATOR, data: { ...agent } });
   const reason = body.stop_reason || body.reason || 'end_turn';
-  pushLog(ORCHESTRATOR, `Turn completed (${reason})`);
-  metrics.orchestratorStats.totalTurns++;
-  saveMetricsDebounced();
-  // Auto-transition to idle after 30s
+  proj.pushLog(ORCHESTRATOR, `Turn completed (${reason})`);
+  proj.metrics.orchestratorStats.totalTurns++;
+  proj.saveMetricsDebounced();
   setTimeout(() => {
     if (agent.status === 'completed') {
       agent.status = 'idle';
       agent.activity = '';
-      broadcast({ type: 'agent-update', agent: ORCHESTRATOR, data: { ...agent } });
+      proj.broadcast({ type: 'agent-update', agent: ORCHESTRATOR, data: { ...agent } });
     }
   }, 30_000);
 }
 
-function handleNotification(body) {
+function handleNotification(proj, body) {
   const message = body.message || body.notification || body.title || 'Notification';
-  pushLog('system', trunc(String(message), 200), 'notification');
+  proj.pushLog('system', trunc(String(message), 200), 'notification');
 }
 
-function handleSessionStart(body) {
+async function handleSessionStart(body) {
+  const cwd = body.cwd;
+  if (!cwd) return null;
+  const proj = await getOrCreateProject(cwd);
+  if (!proj) return null;
+
+  // Map session to project
+  if (body.session_id) {
+    sessionToProject.set(body.session_id, proj.cwd);
+  }
+
   // Reset session state
-  sessionState.sessionId = body.session_id || null;
-  sessionState.startTime = Date.now();
-  sessionState.totalTokens = { input: 0, output: 0, cacheCreation: 0, cacheRead: 0 };
-  sessionState.totalErrors = 0;
-  sessionState.agentCount = 0;
+  proj.sessionState.sessionId = body.session_id || null;
+  proj.sessionState.startTime = Date.now();
+  proj.sessionState.totalTokens = { input: 0, output: 0, cacheCreation: 0, cacheRead: 0 };
+  proj.sessionState.totalErrors = 0;
+  proj.sessionState.agentCount = 0;
+
   // Reset all agents
-  for (const [key, agent] of agents) {
+  for (const [key, agent] of proj.agents) {
     agent.status = 'idle';
     agent.activity = '';
     agent.skills = [];
@@ -582,47 +727,37 @@ function handleSessionStart(body) {
     agent.errors = 0;
     agent.lastError = null;
     agent.tokens = { input: 0, output: 0, cacheCreation: 0, cacheRead: 0 };
-    broadcast({ type: 'agent-update', agent: key, data: { ...agent } });
+    proj.broadcast({ type: 'agent-update', agent: key, data: { ...agent } });
   }
-  activeAgentIds.clear();
-  broadcast({ type: 'session-update', data: { ...sessionState } });
-  pushLog('system', 'Session started', 'session');
+  proj.activeAgentIds.clear();
+  proj.broadcast({ type: 'session-update', data: { ...proj.sessionState } });
+  proj.pushLog('system', 'Session started', 'session');
+  // Notify UI of project list change (new project or updated lastSeen)
+  broadcastGlobal({ type: 'projects-update', data: getProjectsList() });
+  return proj;
 }
 
-function handleSessionEnd(body) {
-  const totalIn = sessionState.totalTokens.input + sessionState.totalTokens.cacheCreation + sessionState.totalTokens.cacheRead;
-  const totalOut = sessionState.totalTokens.output;
-  pushLog('system', `Session ended — ${sessionState.agentCount} agents, ${formatTokenCount(totalIn)} in / ${formatTokenCount(totalOut)} out, ${sessionState.totalErrors} errors`, 'session');
-  // Mark all active agents as completed
-  for (const [key, agent] of agents) {
+function handleSessionEnd(proj, body) {
+  const totalIn = proj.sessionState.totalTokens.input + proj.sessionState.totalTokens.cacheCreation + proj.sessionState.totalTokens.cacheRead;
+  const totalOut = proj.sessionState.totalTokens.output;
+  proj.pushLog('system', `Session ended — ${proj.sessionState.agentCount} agents, ${formatTokenCount(totalIn)} in / ${formatTokenCount(totalOut)} out, ${proj.sessionState.totalErrors} errors`, 'session');
+  for (const [key, agent] of proj.agents) {
     if (agent.status === 'working') {
       agent.status = 'completed';
       agent.activity = 'Session ended';
-      broadcast({ type: 'agent-update', agent: key, data: { ...agent } });
+      proj.broadcast({ type: 'agent-update', agent: key, data: { ...agent } });
     }
   }
+  // Flush metrics and suggestions on session end
+  proj.saveMetricsDebounced();
+  proj.saveSuggestionsDebounced();
 }
 
-// --- Stale Agent Cleanup ---
-// 30s no events → "stale" (amber warning), 90s → auto-idle
+// --- Stale Agent Cleanup (all projects) ---
 
 setInterval(() => {
-  const now = Date.now();
-  for (const [key, agent] of agents) {
-    if (agent.status === 'working' && agent.lastSeen) {
-      const age = now - agent.lastSeen;
-      if (age > 90_000) {
-        agent.status = 'idle';
-        agent.activity = '';
-        agent.skills = [];
-        agent.tools = [];
-        broadcast({ type: 'agent-update', agent: key, data: { ...agent } });
-        pushLog(agent.agentType || key, 'No events for 90s — marked idle');
-      } else if (age > 30_000 && !agent.stale) {
-        agent.stale = true;
-        broadcast({ type: 'agent-update', agent: key, data: { ...agent } });
-      }
-    }
+  for (const [, proj] of projects) {
+    proj.checkStaleAgents();
   }
 }, 5_000);
 
@@ -686,7 +821,7 @@ function decodeWSFrame(buffer) {
   return { opcode, payload, totalLength: offset + payloadLen };
 }
 
-function broadcast(msg) {
+function broadcastGlobal(msg) {
   const frame = encodeWSFrame(JSON.stringify(msg));
   for (const socket of wsClients) {
     try { socket.write(frame); } catch { wsClients.delete(socket); }
@@ -695,8 +830,16 @@ function broadcast(msg) {
 
 function handleWSConnection(socket) {
   wsClients.add(socket);
-  // Send full state on connect
-  const stateFrame = encodeWSFrame(JSON.stringify({ type: 'full-state', data: fullState() }));
+  // Send full multi-project state on connect
+  const projectsData = [];
+  for (const [cwd, proj] of projects) {
+    projectsData.push({ id: cwd, name: proj.name, cwd, ...proj.fullState() });
+  }
+  const stateFrame = encodeWSFrame(JSON.stringify({
+    type: 'full-state-multi',
+    projects: projectsData,
+    projectsList: getProjectsList(),
+  }));
   try { socket.write(stateFrame); } catch { /* noop */ }
 
   let buf = Buffer.alloc(0);
@@ -755,6 +898,19 @@ function sendJSON(res, status, data) {
   res.end(body);
 }
 
+function getProjectFromRequest(url) {
+  const projectParam = url.searchParams.get('project');
+  if (projectParam) {
+    const normalized = normalizeCwd(projectParam);
+    return projects.get(normalized) || null;
+  }
+  // Fallback: if only one project, use it
+  if (projects.size === 1) {
+    return projects.values().next().value;
+  }
+  return null;
+}
+
 const server = createServer(async (req, res) => {
   // CORS preflight
   if (req.method === 'OPTIONS') {
@@ -770,7 +926,7 @@ const server = createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
   const path = url.pathname;
 
-  // Serve dashboard HTML (always read from disk for dev reload)
+  // Serve dashboard HTML
   if (req.method === 'GET' && (path === '/' || path === '/index.html')) {
     try {
       const html = await readFile(join(__dirname, '..', 'ui', 'dashboard.html'), 'utf8');
@@ -783,32 +939,48 @@ const server = createServer(async (req, res) => {
     return;
   }
 
-  // API: full state
+  // API: list projects
+  if (req.method === 'GET' && path === '/api/projects') {
+    sendJSON(res, 200, getProjectsList());
+    return;
+  }
+
+  // API: full state (project-scoped)
   if (req.method === 'GET' && path === '/api/state') {
-    sendJSON(res, 200, fullState());
+    const proj = getProjectFromRequest(url);
+    if (!proj) { sendJSON(res, 200, { agents: {}, activityLog: [], session: {}, suggestions: [] }); return; }
+    sendJSON(res, 200, proj.fullState());
     return;
   }
 
   // API: session state
   if (req.method === 'GET' && path === '/api/session') {
-    sendJSON(res, 200, { ...sessionState });
+    const proj = getProjectFromRequest(url);
+    if (!proj) { sendJSON(res, 200, {}); return; }
+    sendJSON(res, 200, { ...proj.sessionState });
     return;
   }
 
   // Advisor API: metrics
   if (req.method === 'GET' && path === '/api/advisor/metrics') {
-    sendJSON(res, 200, metrics);
+    const proj = getProjectFromRequest(url);
+    if (!proj) { sendJSON(res, 200, { version: 1, agentTypes: {}, orchestratorStats: {} }); return; }
+    sendJSON(res, 200, proj.metrics);
     return;
   }
 
   // Advisor API: get suggestions
   if (req.method === 'GET' && path === '/api/advisor/suggestions') {
-    sendJSON(res, 200, [...suggestions.values()]);
+    const proj = getProjectFromRequest(url);
+    if (!proj) { sendJSON(res, 200, []); return; }
+    sendJSON(res, 200, [...proj.suggestions.values()]);
     return;
   }
 
-  // Advisor API: post suggestions (from advisor skill)
+  // Advisor API: post suggestions
   if (req.method === 'POST' && path === '/api/advisor/suggestions') {
+    const proj = getProjectFromRequest(url);
+    if (!proj) { sendJSON(res, 400, { error: 'No project specified' }); return; }
     const raw = await readBody(req);
     let body;
     try { body = JSON.parse(raw); } catch { sendJSON(res, 400, { error: 'Invalid JSON' }); return; }
@@ -829,28 +1001,30 @@ const server = createServer(async (req, res) => {
         proposedFile: item.proposedFile,
         existingFile: item.existingFile || null,
       };
-      suggestions.set(id, suggestion);
+      proj.suggestions.set(id, suggestion);
       added.push(suggestion);
     }
-    saveSuggestionsDebounced();
-    broadcast({ type: 'advisor-suggestions', data: added });
-    pushLog('advisor', `${added.length} new suggestion${added.length !== 1 ? 's' : ''} available`, 'notification');
+    proj.saveSuggestionsDebounced();
+    proj.broadcast({ type: 'advisor-suggestions', data: added });
+    proj.pushLog('advisor', `${added.length} new suggestion${added.length !== 1 ? 's' : ''} available`, 'notification');
     sendJSON(res, 200, { ok: true, count: added.length, ids: added.map(s => s.id) });
     return;
   }
 
   // Advisor API: approve suggestion
   if (req.method === 'POST' && path === '/api/advisor/approve') {
+    const proj = getProjectFromRequest(url);
+    if (!proj) { sendJSON(res, 400, { error: 'No project specified' }); return; }
     const raw = await readBody(req);
     let body;
     try { body = JSON.parse(raw); } catch { sendJSON(res, 400, { error: 'Invalid JSON' }); return; }
-    const suggestion = suggestions.get(body.id);
+    const suggestion = proj.suggestions.get(body.id);
     if (!suggestion) { sendJSON(res, 404, { error: 'Suggestion not found' }); return; }
     if (suggestion.status !== 'pending') { sendJSON(res, 400, { error: `Suggestion already ${suggestion.status}` }); return; }
-    // Conflict detection: check if existing file changed since suggestion was generated
     if (suggestion.existingFile) {
       try {
-        const currentContent = await readFile(resolve(PROJECT_ROOT, suggestion.existingFile.path), 'utf8');
+        const nativeCwd = proj.cwd.replace(/\//g, (process.platform === 'win32' ? '\\' : '/'));
+        const currentContent = await readFile(resolve(nativeCwd, suggestion.existingFile.path), 'utf8');
         if (currentContent !== suggestion.existingFile.content) {
           sendJSON(res, 409, { error: 'File has been modified since this suggestion was generated. Review the changes and regenerate suggestions.' });
           return;
@@ -858,11 +1032,11 @@ const server = createServer(async (req, res) => {
       } catch { /* file doesn't exist yet — ok for new agents */ }
     }
     try {
-      const writtenPath = await writeAgentFile(suggestion);
+      const writtenPath = await proj.writeAgentFile(suggestion);
       suggestion.status = 'approved';
-      saveSuggestionsDebounced();
-      broadcast({ type: 'advisor-update', data: { ...suggestion } });
-      pushLog('advisor', `Approved: ${suggestion.title}`, 'session');
+      proj.saveSuggestionsDebounced();
+      proj.broadcast({ type: 'advisor-update', data: { ...suggestion } });
+      proj.pushLog('advisor', `Approved: ${suggestion.title}`, 'session');
       sendJSON(res, 200, { ok: true, writtenPath });
     } catch (e) {
       sendJSON(res, 500, { error: e.message });
@@ -872,42 +1046,64 @@ const server = createServer(async (req, res) => {
 
   // Advisor API: dismiss suggestion
   if (req.method === 'POST' && path === '/api/advisor/dismiss') {
+    const proj = getProjectFromRequest(url);
+    if (!proj) { sendJSON(res, 400, { error: 'No project specified' }); return; }
     const raw = await readBody(req);
     let body;
     try { body = JSON.parse(raw); } catch { sendJSON(res, 400, { error: 'Invalid JSON' }); return; }
-    const suggestion = suggestions.get(body.id);
+    const suggestion = proj.suggestions.get(body.id);
     if (!suggestion) { sendJSON(res, 404, { error: 'Suggestion not found' }); return; }
     suggestion.status = 'dismissed';
-    saveSuggestionsDebounced();
-    broadcast({ type: 'advisor-update', data: { ...suggestion } });
-    pushLog('advisor', `Dismissed: ${suggestion.title}`);
+    proj.saveSuggestionsDebounced();
+    proj.broadcast({ type: 'advisor-update', data: { ...suggestion } });
+    proj.pushLog('advisor', `Dismissed: ${suggestion.title}`);
     sendJSON(res, 200, { ok: true });
     return;
   }
 
-  // Agent CRUD endpoints
+  // Advisor API: clear suggestion (remove approved/dismissed)
+  if (req.method === 'POST' && path === '/api/advisor/clear') {
+    const proj = getProjectFromRequest(url);
+    if (!proj) { sendJSON(res, 400, { error: 'No project specified' }); return; }
+    const raw = await readBody(req);
+    let body;
+    try { body = JSON.parse(raw); } catch { sendJSON(res, 400, { error: 'Invalid JSON' }); return; }
+    const suggestion = proj.suggestions.get(body.id);
+    if (!suggestion) { sendJSON(res, 404, { error: 'Suggestion not found' }); return; }
+    if (suggestion.status === 'pending') { sendJSON(res, 400, { error: 'Cannot clear a pending suggestion' }); return; }
+    proj.suggestions.delete(body.id);
+    proj.saveSuggestionsDebounced();
+    proj.broadcast({ type: 'advisor-cleared', data: { id: body.id } });
+    sendJSON(res, 200, { ok: true });
+    return;
+  }
+
+  // Agent CRUD endpoints (project-scoped)
   const agentMatch = path.match(/^\/api\/agents\/([a-zA-Z0-9_-]+)$/);
 
   if (req.method === 'GET' && path === '/api/agents') {
-    const defs = await listAgentDefinitions();
-    // Also merge metrics for each agent
+    const proj = getProjectFromRequest(url);
+    if (!proj) { sendJSON(res, 200, []); return; }
+    const defs = await proj.listAgentDefinitions();
     for (const def of defs) {
-      def.metrics = metrics.agentTypes[def.name] || null;
+      def.metrics = proj.metrics.agentTypes[def.name] || null;
     }
     sendJSON(res, 200, defs);
     return;
   }
 
   if (req.method === 'GET' && agentMatch) {
+    const proj = getProjectFromRequest(url);
+    if (!proj) { sendJSON(res, 400, { error: 'No project specified' }); return; }
     const name = agentMatch[1];
-    const filePath = join(AGENTS_DIR, `${name}.md`);
-    if (!validateAgentPath(filePath)) { sendJSON(res, 400, { error: 'Invalid agent name' }); return; }
+    const filePath = join(proj.agentsDir, `${name}.md`);
+    if (!proj.validateAgentPath(filePath)) { sendJSON(res, 400, { error: 'Invalid agent name' }); return; }
     try {
       const content = await readFile(filePath, 'utf8');
       const parsed = parseAgentFile(content);
       let liveStatus = 'idle';
       let liveData = null;
-      for (const [, agent] of agents) {
+      for (const [, agent] of proj.agents) {
         if (agent.agentType === name && agent.status !== 'idle') {
           liveStatus = agent.status;
           liveData = { ...agent };
@@ -922,7 +1118,7 @@ const server = createServer(async (req, res) => {
         body: parsed.body,
         liveStatus,
         liveData,
-        metrics: metrics.agentTypes[name] || null,
+        metrics: proj.metrics.agentTypes[name] || null,
       });
     } catch {
       sendJSON(res, 404, { error: 'Agent not found' });
@@ -931,30 +1127,34 @@ const server = createServer(async (req, res) => {
   }
 
   if (req.method === 'PUT' && agentMatch) {
+    const proj = getProjectFromRequest(url);
+    if (!proj) { sendJSON(res, 400, { error: 'No project specified' }); return; }
     const name = agentMatch[1];
     if (!/^[a-z0-9_-]+$/.test(name)) { sendJSON(res, 400, { error: 'Invalid agent name: use lowercase letters, digits, hyphens, underscores' }); return; }
-    const filePath = join(AGENTS_DIR, `${name}.md`);
-    if (!validateAgentPath(filePath)) { sendJSON(res, 400, { error: 'Invalid path' }); return; }
+    const filePath = join(proj.agentsDir, `${name}.md`);
+    if (!proj.validateAgentPath(filePath)) { sendJSON(res, 400, { error: 'Invalid path' }); return; }
     const raw = await readBody(req);
     let body;
     try { body = JSON.parse(raw); } catch { sendJSON(res, 400, { error: 'Invalid JSON' }); return; }
     const content = buildAgentFileContent({ name, description: body.description, tools: body.tools, model: body.model, body: body.body });
-    await mkdir(AGENTS_DIR, { recursive: true });
+    await mkdir(proj.agentsDir, { recursive: true });
     const tmpPath = filePath + '.tmp.' + randomBytes(4).toString('hex');
     await writeFile(tmpPath, content);
     await rename(tmpPath, filePath);
-    broadcast({ type: 'agent-definition-changed', name });
+    proj.broadcast({ type: 'agent-definition-changed', name });
     sendJSON(res, 200, { ok: true, name });
     return;
   }
 
   if (req.method === 'DELETE' && agentMatch) {
+    const proj = getProjectFromRequest(url);
+    if (!proj) { sendJSON(res, 400, { error: 'No project specified' }); return; }
     const name = agentMatch[1];
-    const filePath = join(AGENTS_DIR, `${name}.md`);
-    if (!validateAgentPath(filePath)) { sendJSON(res, 400, { error: 'Invalid path' }); return; }
+    const filePath = join(proj.agentsDir, `${name}.md`);
+    if (!proj.validateAgentPath(filePath)) { sendJSON(res, 400, { error: 'Invalid path' }); return; }
     try {
       await unlink(filePath);
-      broadcast({ type: 'agent-definition-changed', name });
+      proj.broadcast({ type: 'agent-definition-changed', name });
       sendJSON(res, 200, { ok: true, deleted: name });
     } catch {
       sendJSON(res, 404, { error: 'Agent not found' });
@@ -969,16 +1169,47 @@ const server = createServer(async (req, res) => {
     try { body = JSON.parse(raw); } catch { body = {}; }
 
     const hook = path.slice(7); // strip "/hooks/"
+
+    // session-start is special: it creates/resolves the project
+    if (hook === 'session-start') {
+      await handleSessionStart(body);
+      sendJSON(res, 200, { ok: true });
+      return;
+    }
+
+    // All other hooks: resolve project from session_id or body
+    const proj = resolveProject(body);
+    if (!proj) {
+      // If we can't resolve, try cwd from body to auto-create
+      if (body.cwd) {
+        const newProj = await getOrCreateProject(body.cwd);
+        if (body.session_id && newProj) sessionToProject.set(body.session_id, newProj.cwd);
+        if (newProj) {
+          switch (hook) {
+            case 'subagent-start':       handleSubagentStart(newProj, body); break;
+            case 'subagent-stop':        await handleSubagentStop(newProj, body); break;
+            case 'pre-tool-use':         handlePreToolUse(newProj, body); break;
+            case 'post-tool-use':        handlePostToolUse(newProj, body); break;
+            case 'post-tool-use-failure': handlePostToolUseFailure(newProj, body); break;
+            case 'stop':                 handleStop(newProj, body); break;
+            case 'notification':         handleNotification(newProj, body); break;
+            case 'session-end':          handleSessionEnd(newProj, body); break;
+          }
+        }
+      }
+      sendJSON(res, 200, { ok: true });
+      return;
+    }
+
     switch (hook) {
-      case 'subagent-start':       handleSubagentStart(body); break;
-      case 'subagent-stop':        await handleSubagentStop(body); break;
-      case 'pre-tool-use':         handlePreToolUse(body); break;
-      case 'post-tool-use':        handlePostToolUse(body); break;
-      case 'post-tool-use-failure': handlePostToolUseFailure(body); break;
-      case 'stop':                 handleStop(body); break;
-      case 'notification':         handleNotification(body); break;
-      case 'session-start':        handleSessionStart(body); break;
-      case 'session-end':          handleSessionEnd(body); break;
+      case 'subagent-start':       handleSubagentStart(proj, body); break;
+      case 'subagent-stop':        await handleSubagentStop(proj, body); break;
+      case 'pre-tool-use':         handlePreToolUse(proj, body); break;
+      case 'post-tool-use':        handlePostToolUse(proj, body); break;
+      case 'post-tool-use-failure': handlePostToolUseFailure(proj, body); break;
+      case 'stop':                 handleStop(proj, body); break;
+      case 'notification':         handleNotification(proj, body); break;
+      case 'session-end':          handleSessionEnd(proj, body); break;
     }
 
     sendJSON(res, 200, { ok: true });
@@ -1009,10 +1240,16 @@ server.on('upgrade', (req, socket, head) => {
 
 // Load persisted data then start
 (async () => {
-  await loadMetrics();
-  await loadSuggestions();
+  await ensurePluginAdvisorDir();
+  await loadProjectsRegistry();
+  // Load metrics and suggestions for all known projects
+  for (const [, proj] of projects) {
+    await proj.loadMetrics();
+    await proj.loadSuggestions();
+  }
   server.listen(PORT, () => {
     console.log(`Agent Dashboard server running on http://localhost:${PORT}`);
+    console.log(`Loaded ${projects.size} project(s) from registry`);
     console.log('Waiting for Claude Code hook events...');
   });
 })();
