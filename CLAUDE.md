@@ -82,6 +82,16 @@ Hook events → server accumulates metrics → /advisor skill fetches + analyzes
 - `POST /api/advisor/approve` — write agent file to disk
 - `POST /api/advisor/dismiss` — mark dismissed
 
+## Versioning & Release Tagging
+
+This plugin is distributed via the Claude Code marketplace. Version management is critical for users to receive updates.
+
+- **Version source of truth**: `.claude-plugin/plugin.json` field `"version"`. Must follow semver (`MAJOR.MINOR.PATCH`).
+- **Git tags**: Every release must have a matching git tag prefixed with `v` (e.g., `v1.0.0`). Tag the commit **after** bumping the version in `plugin.json`.
+- **Bump rules**: MAJOR for breaking changes, MINOR for new features, PATCH for bug fixes.
+- **Tag command**: `git tag v<version> && git push origin v<version>`
+- **Important**: If code changes but the version isn't bumped, existing users won't see updates due to plugin caching.
+
 ## Extending Tool Descriptions
 
 The `describeActivity()` function in `server/server.mjs` maps tool names/inputs to human-readable text. Add new tool mappings there when supporting additional tools.

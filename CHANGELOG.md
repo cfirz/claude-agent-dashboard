@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [Unreleased]
+
+### Added
+
+- `privacy-policy.html` — self-contained privacy policy page for GitHub Pages, styled to match the dashboard dark theme. Confirms no data collection, all-local operation, and MIT license.
+- Author URL field in `.claude-plugin/plugin.json`.
+- Versioning & release tagging guidelines in `CLAUDE.md`.
+
 ## [1.1.0] - 2026-04-04
 
 ### Added
