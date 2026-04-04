@@ -47,7 +47,15 @@ cd agent-advisor
 install.bat
 ```
 
-The script merges the required hooks into your global `~/.claude/settings.json`. It's idempotent — running it multiple times won't create duplicates.
+`install.bat` delegates to `scripts/install.mjs`, which:
+
+- Registers the plugin with Claude Code's plugin system (marketplace + installed-plugins list)
+- Enables the plugin in `~/.claude/settings.json` for skill discovery
+- Merges all nine hooks into `~/.claude/settings.json`, including the `SessionStart` auto-start command with the correct absolute path to `server.mjs`
+- Installs both skills globally to `~/.claude/skills/` so they work from any project directory
+- Removes any obsolete local skill directories left over from earlier installs
+
+The script is idempotent — running it again updates existing entries rather than creating duplicates.
 
 ### Option D: Manual Hook Setup
 
@@ -100,10 +108,16 @@ If you prefer not to use the plugin system, add the hooks directly to your Claud
 
 ### 1. Start the dashboard server
 
-**Windows (recommended):** Run `start.bat` from the repo root. It kills any existing server on port 8099 and starts a fresh one:
+**Windows (recommended):** Run `start.bat` from the repo root. It kills any existing server on port 8099, starts a fresh one, and waits until the server is ready before returning:
 
 ```bat
 start.bat
+```
+
+To stop the server without starting a new one:
+
+```bat
+stop_server.bat
 ```
 
 **Manual:**
@@ -274,6 +288,8 @@ agent-advisor/
 │   └── plugin.json              # Plugin manifest (metadata, hooks, skills)
 ├── hooks/
 │   └── hooks.json               # HTTP hook definitions for 9 lifecycle events
+├── scripts/
+│   └── install.mjs              # Node.js install script (called by install.bat)
 ├── server/
 │   └── server.mjs               # Zero-dep Node.js HTTP + WebSocket server
 ├── ui/
@@ -283,8 +299,9 @@ agent-advisor/
 │   │   └── SKILL.md             # /agent-advisor:dashboard slash command
 │   └── advisor/
 │       └── SKILL.md             # /agent-advisor:advisor slash command
-├── install.bat                  # Windows quick-install script for hooks
+├── install.bat                  # Windows install (delegates to scripts/install.mjs)
 ├── start.bat                    # Windows script to start (or restart) the server
+├── stop_server.bat              # Windows script to stop the server
 ├── marketplace.json             # Marketplace catalog for plugin distribution
 ├── CLAUDE.md                    # Project guidance for Claude Code
 ├── LICENSE                      # MIT
@@ -319,7 +336,7 @@ start.bat          # Windows
 - **No build step.** The UI is a single self-contained `ui/dashboard.html` with inline CSS and JS. Keep it that way.
 - **Server changes** go in `server/server.mjs`. To add human-readable descriptions for new tools, extend the `describeActivity()` function.
 - **UI changes** go in `ui/dashboard.html`. Test with both WebSocket (normal) and polling fallback (disconnect WS to verify).
-- **Hook changes** go in `hooks/hooks.json` and must be reflected in `install.bat` and the Manual Hook Setup section of this README.
+- **Hook changes** go in `hooks/hooks.json` and must be reflected in `scripts/install.mjs` and the Manual Hook Setup section of this README.
 
 ### Submitting a Pull Request
 

@@ -5,16 +5,17 @@ set "PORT=8099"
 set "ADVISOR_DIR=%~dp0"
 
 :: Kill any existing process on the port
-for /f "tokens=5" %%p in ('netstat -ano 2^>nul ^| findstr ":%PORT% " ^| findstr "LISTENING"') do (
-    echo Stopping existing server on port %PORT% (PID %%p)...
-    taskkill /PID %%p /F >nul 2>&1
-)
+powershell -NoProfile -Command ^
+  "(Get-NetTCPConnection -LocalPort %PORT% -State Listen -ErrorAction SilentlyContinue).OwningProcess | Sort-Object -Unique | ForEach-Object {" ^
+  "  Write-Host 'Stopping existing server on port %PORT% (PID' $_ ')...';" ^
+  "  Stop-Process -Id $_ -Force" ^
+  "}"
 
 :: Brief pause to let the port free up
 timeout /t 1 /nobreak >nul
 
 echo Starting dashboard server on port %PORT%...
-start /B node "%ADVISOR_DIR%server\server.mjs"
+start /MIN "Agent Dashboard" node "%ADVISOR_DIR%server\server.mjs"
 
 :: Wait for server to become ready
 set /a attempts=0
@@ -29,3 +30,5 @@ exit /b 1
 
 :ready
 echo Server is running at http://localhost:%PORT%
+echo (You can close this window — the server runs independently)
+pause

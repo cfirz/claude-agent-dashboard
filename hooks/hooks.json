@@ -75,7 +75,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "curl -s http://localhost:8099/api/state > /dev/null 2>&1 || node \"$CLAUDE_PROJECT_DIR/server/server.mjs\" &"
+            "command": "curl -s http://localhost:8099/api/state > /dev/null 2>&1 || node \"$CLAUDE_PLUGIN_ROOT/server/server.mjs\" &"
           },
           {
             "type": "http",

@@ -6,7 +6,5 @@
   "repository": "https://github.com/cfirz/agent-advisor",
   "license": "MIT",
   "keywords": ["monitoring", "subagents", "dashboard", "devtools", "visualization"],
-  "homepage": "https://github.com/cfirz/agent-advisor",
-  "hooks": "./hooks/hooks.json",
-  "skills": ["./skills/"]
+  "homepage": "https://github.com/cfirz/agent-advisor"
 }

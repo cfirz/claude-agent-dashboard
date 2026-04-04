@@ -18,7 +18,7 @@ Fetch accumulated metrics from the dashboard server. Use the current working dir
 curl -s "http://localhost:8099/api/advisor/metrics?project=$(pwd)"
 ```
 
-If the server is not running, tell the user to start it first with `/agent-advisor:dashboard`.
+If the server is not running, tell the user to start it first with `/agent-dashboard`.
 
 ### Step 2: Read Existing Agents
 
