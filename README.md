@@ -204,7 +204,7 @@ The dashboard converts raw tool calls into human-readable descriptions:
 - WebSocket push for real-time updates, with HTTP polling fallback (`/api/state`)
 - Stale agent detection: 30s no events = amber warning, 90s = auto-idle
 - Skills and tools are cleared when an agent returns to idle
-- Advisor system: accumulates per-agent metrics, stores suggestions, handles approve/dismiss
+- Advisor system: accumulates per-agent metrics, stores suggestions, handles approve/dismiss; supports seven suggestion types with allowlist-based path validation (`validateSuggestionPath`) and write-or-append file handling (`writeSuggestionFile`)
 - Persists advisor data (metrics + suggestions) to `.claude/advisor-data/`
 - **Session archival**: sessions are snapshotted on `SessionEnd` and stored in `.claude/advisor-data/sessions.json` (max 50 per project); each record includes agents, activity log, and per-agent-type metrics breakdown
 - Filters temporary and internal projects (`.paperclip/instances/` paths, UUID-prefixed names, `_default`) from the projects list
@@ -223,7 +223,7 @@ The dashboard converts raw tool calls into human-readable descriptions:
 - Session summary bar with duration, agent count, token usage, and error count
 - Responsive CSS grid layout for agent cards with token counters
 - Skills shown as purple tags, tools as orange tags on each card
-- Agent Advisor panel with suggestion cards (approve/dismiss)
+- Agent Advisor panel with suggestion cards (approve/dismiss); badge styles and approve tooltips adapt to all seven suggestion types, including an append-preview diff for `improve-rules` suggestions targeting `CLAUDE.md`
 - Dismissible idle cards with Clear button (re-appear when agent is active again)
 - WebSocket connection with automatic reconnect + HTTP polling fallback
 - Relative timestamps updated every second
@@ -235,15 +235,29 @@ The dashboard converts raw tool calls into human-readable descriptions:
 
 ## Agent Advisor
 
-The dashboard includes an AI-powered advisor that analyzes subagent performance and suggests new agents or improvements to existing ones.
+The dashboard includes an AI-powered advisor that analyzes subagent performance and suggests actionable improvements to your agent setup.
 
 **How it works:**
 1. Performance metrics (runs, tokens, errors, tool frequency) accumulate automatically as agents work
 2. Run `/agent-advisor:advisor` in Claude Code to analyze metrics and generate suggestions
 3. Suggestions appear in the Advisor panel in the dashboard with approve/dismiss buttons
-4. Approving a suggestion writes the agent `.md` file to `.claude/agents/` automatically
+4. Approving a suggestion writes or appends the proposed file automatically
 
-The advisor skill can also perform cross-session analysis: it fetches session history via `GET /api/sessions`, compares trends across sessions (error rates, token usage, agent utilization), and incorporates those trends into its suggestions.
+**Suggestion types:**
+
+| Type | What it does | Target path |
+|------|-------------|-------------|
+| `new-agent` | Creates a new subagent definition | `.claude/agents/<name>.md` |
+| `improve-agent` | Updates an existing agent definition | `.claude/agents/<name>.md` |
+| `improve-rules` | Appends delegation rules to the project rules file so the orchestrator knows when to use existing agents | `CLAUDE.md` (append mode) |
+| `new-skill` | Creates a new slash command skill that chains agents into a workflow | `skills/<name>/SKILL.md` |
+| `improve-skill` | Updates an existing skill | `skills/<name>/SKILL.md` |
+| `new-command` | Creates a new command that invokes agents | `.claude/commands/<name>.md` |
+| `improve-command` | Updates an existing command | `.claude/commands/<name>.md` |
+
+**Underutilization detection:** The advisor cross-references `.claude/agents/` against collected metrics to find agents with zero or very few runs. For each underutilized agent it diagnoses why — missing delegation rules in `CLAUDE.md`, no skill or command entry point, or a description that doesn't match the orchestrator's actual work patterns — and proposes the most appropriate fix.
+
+The advisor skill also performs cross-session analysis: it fetches session history via `GET /api/sessions`, compares trends across sessions (error rates, token usage, delegation ratio), and incorporates those trends into its suggestions.
 
 Metrics and suggestions are persisted to `.claude/advisor-data/` and survive server restarts.
 

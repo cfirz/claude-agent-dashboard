@@ -254,23 +254,61 @@ class ProjectState {
     os.toolFrequency[toolName] = (os.toolFrequency[toolName] || 0) + 1;
   }
 
-  // --- Agent file helpers ---
+  // --- Suggestion file helpers ---
 
-  validateAgentPath(filePath) {
-    const resolved = resolve(filePath);
-    const normalizedAgentsDir = normalize(this.agentsDir);
-    return resolved.startsWith(normalizedAgentsDir) && resolved.endsWith('.md');
+  static VALID_SUGGESTION_TYPES = new Set([
+    'new-agent', 'improve-agent',
+    'improve-rules',
+    'new-skill', 'improve-skill',
+    'new-command', 'improve-command',
+  ]);
+
+  validateSuggestionPath(type, relativePath) {
+    const nativeCwd = this.cwd.replace(/\//g, (process.platform === 'win32' ? '\\' : '/'));
+    const fullPath = resolve(nativeCwd, relativePath);
+    const projectRoot = resolve(nativeCwd);
+    // Must stay within project root (traversal prevention)
+    if (!fullPath.startsWith(projectRoot)) return false;
+
+    const normed = relativePath.replace(/\\/g, '/');
+    switch (type) {
+      case 'new-agent':
+      case 'improve-agent':
+        return /^\.claude\/agents\/[^/]+\.md$/.test(normed);
+      case 'improve-rules':
+        return normed === 'CLAUDE.md';
+      case 'new-skill':
+      case 'improve-skill':
+        return /^skills\/[^/]+\/SKILL\.md$/.test(normed);
+      case 'new-command':
+      case 'improve-command':
+        return /^\.claude\/commands\/[^/]+\.md$/.test(normed);
+      default:
+        return false;
+    }
   }
 
-  async writeAgentFile(suggestion) {
+  async writeSuggestionFile(suggestion) {
     const filePath = suggestion.proposedFile?.path;
     if (!filePath) throw new Error('No file path in suggestion');
-    // Resolve relative to project cwd
-    const fullPath = resolve(this.cwd.replace(/\//g, (process.platform === 'win32' ? '\\' : '/')), filePath);
-    if (!this.validateAgentPath(fullPath)) throw new Error('Invalid path: must be within .claude/agents/ and end with .md');
+    const nativeCwd = this.cwd.replace(/\//g, (process.platform === 'win32' ? '\\' : '/'));
+    const fullPath = resolve(nativeCwd, filePath);
+    if (!this.validateSuggestionPath(suggestion.type, filePath)) {
+      throw new Error(`Invalid path for type "${suggestion.type}": ${filePath}`);
+    }
     await mkdir(dirname(fullPath), { recursive: true });
     const tmpPath = fullPath + '.tmp.' + randomBytes(4).toString('hex');
-    await writeFile(tmpPath, suggestion.proposedFile.content);
+
+    if (suggestion.type === 'improve-rules') {
+      // Append mode for CLAUDE.md — don't overwrite the whole file
+      let existing = '';
+      try { existing = await readFile(fullPath, 'utf8'); } catch { /* file doesn't exist yet */ }
+      const combined = existing ? existing.trimEnd() + '\n\n' + suggestion.proposedFile.content : suggestion.proposedFile.content;
+      await writeFile(tmpPath, combined);
+    } else {
+      await writeFile(tmpPath, suggestion.proposedFile.content);
+    }
+
     await rename(tmpPath, fullPath);
     return fullPath;
   }
@@ -1264,7 +1302,8 @@ const server = createServer(async (req, res) => {
     const items = Array.isArray(body) ? body : [body];
     const added = [];
     for (const item of items) {
-      if (!item.type || !item.title || !item.proposedFile?.content) continue;
+      if (!item.type || !item.title || !item.proposedFile?.content || !item.proposedFile?.path) continue;
+      if (!ProjectState.VALID_SUGGESTION_TYPES.has(item.type)) continue;
       const id = item.id || `suggest_${Date.now()}_${randomBytes(3).toString('hex')}`;
       const suggestion = {
         id,
@@ -1309,7 +1348,7 @@ const server = createServer(async (req, res) => {
       } catch { /* file doesn't exist yet — ok for new agents */ }
     }
     try {
-      const writtenPath = await proj.writeAgentFile(suggestion);
+      const writtenPath = await proj.writeSuggestionFile(suggestion);
       suggestion.status = 'approved';
       proj.saveSuggestionsDebounced();
       proj.broadcast({ type: 'advisor-update', data: { ...suggestion } });

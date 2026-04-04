@@ -445,6 +445,11 @@
   }
   .suggestion-card.new-agent { border-left-color: var(--accent); }
   .suggestion-card.improve-agent { border-left-color: var(--status-completed); }
+  .suggestion-card.improve-rules { border-left-color: var(--status-warning); }
+  .suggestion-card.new-skill { border-left-color: var(--accent); }
+  .suggestion-card.improve-skill { border-left-color: var(--status-completed); }
+  .suggestion-card.new-command { border-left-color: var(--accent); }
+  .suggestion-card.improve-command { border-left-color: var(--status-completed); }
   .suggestion-card.approved { border-left-color: var(--status-active); opacity: 0.7; }
   .suggestion-card.dismissed { border-left-color: var(--text-tertiary); opacity: 0.4; }
 
@@ -452,6 +457,11 @@
   .suggestion-type-badge { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 3px 10px; border-radius: 10px; }
   .suggestion-type-badge.new-agent { background: var(--accent-bg); color: var(--accent); }
   .suggestion-type-badge.improve-agent { background: var(--status-completed-bg); color: var(--status-completed); }
+  .suggestion-type-badge.improve-rules { background: var(--status-warning-bg); color: var(--status-warning); }
+  .suggestion-type-badge.new-skill { background: var(--accent-bg); color: var(--accent); }
+  .suggestion-type-badge.improve-skill { background: var(--status-completed-bg); color: var(--status-completed); }
+  .suggestion-type-badge.new-command { background: var(--accent-bg); color: var(--accent); }
+  .suggestion-type-badge.improve-command { background: var(--status-completed-bg); color: var(--status-completed); }
   .suggestion-title { font-size: 14px; font-weight: 600; color: var(--text-primary); flex: 1; }
   .suggestion-status-label { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 10px; }
   .suggestion-status-label.pending { background: var(--status-warning-bg); color: var(--status-warning); }
@@ -1519,10 +1529,12 @@
     function renderSuggestionCard(data) {
       const card = document.createElement('div');
       card.className = 'suggestion-card ' + data.type + ' ' + data.status;
-      const typeLabel = data.type === 'new-agent' ? 'New' : 'Improve';
+      const typeLabelMap = {'new-agent':'New Agent','improve-agent':'Improve Agent','improve-rules':'Rules','new-skill':'New Skill','improve-skill':'Improve Skill','new-command':'New Command','improve-command':'Improve Command'};
+      const typeLabel = typeLabelMap[data.type] || data.type;
       const statusLabel = data.status.charAt(0).toUpperCase() + data.status.slice(1);
       const clearBtn = data.status !== 'pending' ? '<button class="btn-clear">Clear</button>' : '';
-      card.innerHTML = '<div class="suggestion-header"><span class="suggestion-type-badge ' + data.type + '">' + typeLabel + '</span><span class="suggestion-title">' + escapeHtml(data.title) + '</span><span class="suggestion-status-label ' + data.status + '">' + statusLabel + '</span></div><div class="suggestion-summary">' + escapeHtml(data.summary) + '</div><div class="suggestion-actions"><button class="btn-details" title="Show the proposed file content">Details</button><button class="btn-approve" title="Write this agent file to .claude/agents/"' + (data.status !== 'pending' ? ' disabled' : '') + '>Approve</button><button class="btn-dismiss" title="Hide this suggestion"' + (data.status !== 'pending' ? ' disabled' : '') + '>Dismiss</button>' + clearBtn + '</div><div class="suggestion-detail"></div>';
+            const approveTooltip = data.type === 'improve-rules' ? 'Append to ' + escapeHtml(data.proposedFile.path) : 'Write to ' + escapeHtml(data.proposedFile.path);
+      card.innerHTML = '<div class="suggestion-header"><span class="suggestion-type-badge ' + data.type + '">' + typeLabel + '</span><span class="suggestion-title">' + escapeHtml(data.title) + '</span><span class="suggestion-status-label ' + data.status + '">' + statusLabel + '</span></div><div class="suggestion-summary">' + escapeHtml(data.summary) + '</div><div class="suggestion-actions"><button class="btn-details" title="Show the proposed file content">Details</button><button class="btn-approve" title="' + approveTooltip + '"' + (data.status !== 'pending' ? ' disabled' : '') + '>Approve</button><button class="btn-dismiss" title="Hide this suggestion"' + (data.status !== 'pending' ? ' disabled' : '') + '>Dismiss</button>' + clearBtn + '</div><div class="suggestion-detail"></div>';
       const detailEl = card.querySelector('.suggestion-detail');
       const detailBtn = card.querySelector('.btn-details');
       const approveBtn = card.querySelector('.btn-approve');
@@ -1533,8 +1545,10 @@
         detailBtn.textContent = vis ? 'Details' : 'Hide';
         if (!vis && !detailEl.dataset.rendered) {
           detailEl.dataset.rendered = 'true';
-          if (data.type === 'improve-agent' && data.existingFile) { detailEl.innerHTML = simpleDiff(data.existingFile.content, data.proposedFile.content); }
-          else { detailEl.innerHTML = '<pre>' + escapeHtml(data.proposedFile.content) + '</pre>'; }
+          if (data.existingFile) {
+            if (data.type === 'improve-rules') { detailEl.innerHTML = simpleDiff(data.existingFile.content, data.existingFile.content.trimEnd() + '\n\n' + data.proposedFile.content); }
+            else { detailEl.innerHTML = simpleDiff(data.existingFile.content, data.proposedFile.content); }
+          } else { detailEl.innerHTML = '<pre>' + escapeHtml(data.proposedFile.content) + '</pre>'; }
         }
       });
       approveBtn.addEventListener('click', async () => {

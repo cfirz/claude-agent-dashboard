@@ -4,6 +4,28 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [1.4.0] - 2026-04-04
+
+### Added
+
+- **Multi-target suggestion types** — the advisor can now suggest changes beyond agent `.md` files. New types:
+  - `improve-rules` — appends delegation rules to `CLAUDE.md` so the orchestrator knows when to invoke existing agents
+  - `new-skill` / `improve-skill` — proposes new or improved skills (written to `skills/<name>/SKILL.md`) that chain agents into workflows
+  - `new-command` / `improve-command` — proposes new or improved commands (written to `.claude/commands/<name>.md`) that leverage agents
+- **Underutilization detection in the advisor skill** — cross-references `.claude/agents/` against collected metrics to identify agents with zero or very few runs relative to orchestrator activity.
+- **Root cause diagnosis** — for each underutilized agent the advisor checks whether it is referenced in `CLAUDE.md`, in any skill, or in any command, and selects the most appropriate suggestion type to fix the gap.
+- **Orchestrator overload matching** — compares the orchestrator's tool-use frequency against agent capabilities to identify work that should be delegated to subagents.
+- **Prioritized suggestion generation** — rules suggestions (`improve-rules`) are generated first, followed by agent improvements, then new skills and commands.
+- **Dashboard badge styles** for all new suggestion types (`improve-rules`, `new-skill`, `improve-skill`, `new-command`, `improve-command`), each using an appropriate accent color.
+- **Dynamic approve tooltips** — the approve button tooltip now shows the actual target path and reads "Append to CLAUDE.md" for `improve-rules` suggestions instead of "Write to …".
+- **Diff rendering for all types** — the suggestion detail diff view works for every suggestion type that provides an `existingFile`, including an append-preview for `CLAUDE.md` changes.
+
+### Changed
+
+- `validateAgentPath()` on the server replaced by `validateSuggestionPath(type, path)` — an allowlist-based validator that enforces path rules for all seven suggestion types: `new-agent` and `improve-agent` must target `.claude/agents/*.md`; `improve-rules` must target `CLAUDE.md`; `new-skill` and `improve-skill` must target `skills/*/SKILL.md`; `new-command` and `improve-command` must target `.claude/commands/*.md`.
+- `writeAgentFile()` on the server replaced by `writeSuggestionFile(suggestion)` — handles all target paths with write mode for new files and append mode for `CLAUDE.md` (`improve-rules` type).
+- Suggestion ingestion (`POST /api/advisor/suggestions`) now validates the `type` field against the allowlist and rejects unknown types with a 400 response.
+
 ## [Unreleased]
 
 ### Added
