@@ -22,6 +22,7 @@ const PROJECTS_REGISTRY_PATH = join(PLUGIN_ADVISOR_DIR, 'projects.json');
 const ORCHESTRATOR = 'orchestrator';
 const MAX_LOG = 100;
 const MAX_RUNS_PER_AGENT = 20;
+const MAX_SESSIONS = 50;
 
 // --- Multi-Project State ---
 
@@ -76,6 +77,11 @@ class ProjectState {
     this.suggestions = new Map();
     this._metricsSaveTimer = null;
     this._suggestionsSaveTimer = null;
+
+    // Session history
+    this.sessionHistory = [];
+    this.sessionsPath = join(this.advisorDir, 'sessions.json');
+    this._sessionsSaveTimer = null;
   }
 
   // --- Persistence ---
@@ -121,6 +127,23 @@ class ProjectState {
     }, 500);
   }
 
+  async loadSessions() {
+    try {
+      const raw = await readFile(this.sessionsPath, 'utf8');
+      this.sessionHistory = JSON.parse(raw);
+    } catch { /* file missing or corrupt — start empty */ }
+  }
+
+  saveSessionsDebounced() {
+    if (this._sessionsSaveTimer) clearTimeout(this._sessionsSaveTimer);
+    this._sessionsSaveTimer = setTimeout(async () => {
+      try {
+        await this.ensureAdvisorDir();
+        await writeFile(this.sessionsPath, JSON.stringify(this.sessionHistory, null, 2));
+      } catch (e) { console.error(`Failed to save sessions for ${this.name}:`, e.message); }
+    }, 500);
+  }
+
   // --- Agent State ---
 
   agentKey(agentType, agentId) {
@@ -158,7 +181,7 @@ class ProjectState {
     const obj = {};
     for (const [key, val] of this.agents) obj[key] = { ...val };
     const sugg = [...this.suggestions.values()];
-    return { agents: obj, activityLog: this.activityLog.slice(), session: { ...this.sessionState }, suggestions: sugg };
+    return { agents: obj, activityLog: this.activityLog.slice(), session: { ...this.sessionState }, suggestions: sugg, sessionCount: this.sessionHistory.length };
   }
 
   pushLog(displayName, message, level = 'info') {
@@ -199,6 +222,7 @@ class ProjectState {
     }
     m.runs.push({
       timestamp: new Date().toISOString(),
+      sessionId: this.sessionState.sessionId || null,
       toolCount: agentData.toolCount || 0,
       errors: agentData.errors || 0,
       tokens: { ...t },
@@ -380,6 +404,7 @@ async function getOrCreateProject(cwd) {
   await proj.ensureAdvisorDir();
   await proj.loadMetrics();
   await proj.loadSuggestions();
+  await proj.loadSessions();
   await saveProjectsRegistry();
   // Notify UI of new project
   broadcastGlobal({ type: 'projects-update', data: getProjectsList() });
@@ -709,11 +734,78 @@ function handleNotification(proj, body) {
   proj.pushLog('system', trunc(String(message), 200), 'notification');
 }
 
+function archiveCurrentSession(proj) {
+  if (!proj.sessionState.sessionId) return;
+
+  const record = {
+    sessionId: proj.sessionState.sessionId,
+    startTime: proj.sessionState.startTime,
+    endTime: Date.now(),
+    duration: proj.sessionState.startTime ? Date.now() - proj.sessionState.startTime : null,
+    status: 'ended',
+    agents: {},
+    activityLog: proj.activityLog.slice(),
+    metrics: {
+      totalTokens: { ...proj.sessionState.totalTokens },
+      totalErrors: proj.sessionState.totalErrors,
+      agentCount: proj.sessionState.agentCount,
+      agentBreakdown: {},
+    },
+  };
+
+  // Snapshot agent states
+  for (const [key, agent] of proj.agents) {
+    record.agents[key] = { ...agent, tokens: { ...agent.tokens } };
+    if (agent.lastError) record.agents[key].lastError = { ...agent.lastError };
+  }
+
+  // Build per-agentType breakdown
+  for (const [, agent] of proj.agents) {
+    const aType = agent.agentType || 'unknown';
+    if (!record.metrics.agentBreakdown[aType]) {
+      record.metrics.agentBreakdown[aType] = {
+        runs: 0, toolCalls: 0, errors: 0,
+        tokens: { input: 0, output: 0, cacheCreation: 0, cacheRead: 0 },
+        durationMs: 0,
+      };
+    }
+    const bd = record.metrics.agentBreakdown[aType];
+    bd.runs++;
+    bd.toolCalls += agent.toolCount || 0;
+    bd.errors += agent.errors || 0;
+    bd.tokens.input += agent.tokens?.input || 0;
+    bd.tokens.output += agent.tokens?.output || 0;
+    bd.tokens.cacheCreation += agent.tokens?.cacheCreation || 0;
+    bd.tokens.cacheRead += agent.tokens?.cacheRead || 0;
+  }
+
+  proj.sessionHistory.push(record);
+  while (proj.sessionHistory.length > MAX_SESSIONS) proj.sessionHistory.shift();
+  proj.saveSessionsDebounced();
+
+  // Broadcast lightweight summary (no activityLog or full agents)
+  proj.broadcast({
+    type: 'session-archived',
+    data: {
+      sessionId: record.sessionId,
+      startTime: record.startTime,
+      endTime: record.endTime,
+      duration: record.duration,
+      agentCount: record.metrics.agentCount,
+      totalErrors: record.metrics.totalErrors,
+      totalTokens: record.metrics.totalTokens,
+    },
+  });
+}
+
 async function handleSessionStart(body) {
   const cwd = body.cwd;
   if (!cwd) return null;
   const proj = await getOrCreateProject(cwd);
   if (!proj) return null;
+
+  // Archive previous session if one exists
+  archiveCurrentSession(proj);
 
   // Map session to project
   if (body.session_id) {
@@ -748,6 +840,9 @@ async function handleSessionStart(body) {
 }
 
 function handleSessionEnd(proj, body) {
+  // Archive session before logging end message
+  archiveCurrentSession(proj);
+
   const totalIn = proj.sessionState.totalTokens.input + proj.sessionState.totalTokens.cacheCreation + proj.sessionState.totalTokens.cacheRead;
   const totalOut = proj.sessionState.totalTokens.output;
   proj.pushLog('system', `Session ended — ${proj.sessionState.agentCount} agents, ${formatTokenCount(totalIn)} in / ${formatTokenCount(totalOut)} out, ${proj.sessionState.totalErrors} errors`, 'session');
@@ -987,10 +1082,112 @@ const server = createServer(async (req, res) => {
     return;
   }
 
+  // API: list all sessions (archived + active)
+  if (req.method === 'GET' && path === '/api/sessions') {
+    const proj = getProjectFromRequest(url);
+    if (!proj) { sendJSON(res, 200, []); return; }
+
+    const list = proj.sessionHistory.map(s => ({
+      sessionId: s.sessionId,
+      startTime: s.startTime,
+      endTime: s.endTime,
+      duration: s.duration,
+      status: s.status,
+      agentCount: s.metrics?.agentCount || 0,
+      totalErrors: s.metrics?.totalErrors || 0,
+      totalTokens: s.metrics?.totalTokens || { input: 0, output: 0, cacheCreation: 0, cacheRead: 0 },
+    }));
+
+    // Append current active session
+    if (proj.sessionState.sessionId) {
+      list.push({
+        sessionId: proj.sessionState.sessionId,
+        startTime: proj.sessionState.startTime,
+        endTime: null,
+        duration: proj.sessionState.startTime ? Date.now() - proj.sessionState.startTime : null,
+        status: 'active',
+        agentCount: proj.sessionState.agentCount,
+        totalErrors: proj.sessionState.totalErrors,
+        totalTokens: { ...proj.sessionState.totalTokens },
+      });
+    }
+
+    list.sort((a, b) => (b.startTime || 0) - (a.startTime || 0));
+    sendJSON(res, 200, list);
+    return;
+  }
+
+  // API: session detail by ID
+  const sessionDetailMatch = path.match(/^\/api\/sessions\/(.+)$/);
+  if (req.method === 'GET' && sessionDetailMatch) {
+    const proj = getProjectFromRequest(url);
+    const sid = decodeURIComponent(sessionDetailMatch[1]);
+    if (!proj) { sendJSON(res, 404, { error: 'Project not found' }); return; }
+
+    // Check active session
+    if (proj.sessionState.sessionId === sid) {
+      const agents = {};
+      for (const [key, val] of proj.agents) agents[key] = { ...val, tokens: { ...val.tokens } };
+      sendJSON(res, 200, {
+        sessionId: sid,
+        startTime: proj.sessionState.startTime,
+        endTime: null,
+        duration: proj.sessionState.startTime ? Date.now() - proj.sessionState.startTime : null,
+        status: 'active',
+        agents,
+        activityLog: proj.activityLog.slice(),
+        metrics: {
+          totalTokens: { ...proj.sessionState.totalTokens },
+          totalErrors: proj.sessionState.totalErrors,
+          agentCount: proj.sessionState.agentCount,
+          agentBreakdown: {},
+        },
+      });
+      return;
+    }
+
+    // Search archived sessions
+    const record = proj.sessionHistory.find(s => s.sessionId === sid);
+    if (!record) { sendJSON(res, 404, { error: 'Session not found' }); return; }
+    sendJSON(res, 200, record);
+    return;
+  }
+
   // Advisor API: metrics
   if (req.method === 'GET' && path === '/api/advisor/metrics') {
     const proj = getProjectFromRequest(url);
     if (!proj) { sendJSON(res, 200, { version: 1, agentTypes: {}, orchestratorStats: {} }); return; }
+
+    const sessionFilter = url.searchParams.get('session');
+    if (sessionFilter) {
+      // Build filtered metrics
+      const filtered = { version: proj.metrics.version, lastUpdated: proj.metrics.lastUpdated, agentTypes: {}, orchestratorStats: proj.metrics.orchestratorStats };
+      for (const [agentType, data] of Object.entries(proj.metrics.agentTypes)) {
+        const matchingRuns = (data.runs || []).filter(r => r.sessionId === sessionFilter);
+        if (matchingRuns.length === 0) continue;
+        filtered.agentTypes[agentType] = {
+          totalRuns: matchingRuns.length,
+          totalToolCalls: matchingRuns.reduce((s, r) => s + (r.toolCount || 0), 0),
+          totalErrors: matchingRuns.reduce((s, r) => s + (r.errors || 0), 0),
+          totalTokens: matchingRuns.reduce((s, r) => ({
+            input: s.input + (r.tokens?.input || 0),
+            output: s.output + (r.tokens?.output || 0),
+            cacheCreation: s.cacheCreation + (r.tokens?.cacheCreation || 0),
+            cacheRead: s.cacheRead + (r.tokens?.cacheRead || 0),
+          }), { input: 0, output: 0, cacheCreation: 0, cacheRead: 0 }),
+          toolFrequency: {},
+          runs: matchingRuns,
+        };
+        for (const run of matchingRuns) {
+          for (const tool of (run.tools || [])) {
+            filtered.agentTypes[agentType].toolFrequency[tool] = (filtered.agentTypes[agentType].toolFrequency[tool] || 0) + 1;
+          }
+        }
+      }
+      sendJSON(res, 200, filtered);
+      return;
+    }
+
     sendJSON(res, 200, proj.metrics);
     return;
   }
@@ -1284,6 +1481,7 @@ server.on('upgrade', (req, socket, head) => {
   for (const [, proj] of projects) {
     await proj.loadMetrics();
     await proj.loadSuggestions();
+    await proj.loadSessions();
   }
   server.listen(PORT, () => {
     console.log(`Agent Dashboard server running on http://localhost:${PORT}`);
